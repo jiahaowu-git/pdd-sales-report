@@ -10,7 +10,7 @@ const path = require("path");
 // 判空，避免外部环境变量污染默认值。
 const NODE_ENV = process.env.NODE_ENV || "development";
 
-const DEV_REPORTS_ROOT = path.resolve(__dirname, "../../拼多多销售报表");
+const DEV_REPORTS_ROOT = path.resolve(__dirname, "../../../拼多多销售报表");
 const PROD_REPORTS_ROOT = "D:\\下载\\影刀RPA下载\\拼多多销售报表";
 
 const DEFAULT_REPORTS_ROOT =
