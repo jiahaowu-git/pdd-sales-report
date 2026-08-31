@@ -1,14 +1,14 @@
 import axios from 'axios';
 
 // baseURL 解析顺序：
-// 1) 构建时 VITE_API_BASE（绝对 URL，例如 http://localhost:9002）
-// 2) 运行时 window.__API_BASE__（绝对 URL，由 scripts/serve.js 注入）
-// 3) 回落到当前 origin（依赖 vite/serve 反向代理 /api）
-// 使用绝对 URL 可以让浏览器在 sandbox/preview 等场景下避开跨 origin 问题
-const envBase = import.meta.env.VITE_API_BASE;
+// 1) 运行时 window.__API_BASE__（由 scripts/serve.js 根据 PM2 env.API_BASE 注入）
+//    仅当前后端不在同一台机器时使用。
+// 2) 构建时 VITE_API_BASE（仅本地 vite dev server 用）。
+// 3) 默认空字符串 → axios 走相对路径，请求当前 origin/api/**，
+//    由 serve.js 的 /api 反代转发到后端。同机部署时最简单、不会出 CORS 问题。
 const runtimeBase = typeof window !== 'undefined' ? window.__API_BASE__ : '';
-const defaultBase = typeof window !== 'undefined' ? window.location.origin : '';
-const baseURL = envBase || runtimeBase || defaultBase;
+const envBase = import.meta.env.VITE_API_BASE;
+const baseURL = runtimeBase || envBase || '';
 
 const http = axios.create({
   baseURL,
