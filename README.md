@@ -111,8 +111,14 @@ pm2 start ecosystem.config.js
 | 看日志 | `pm2 logs`（或指定 `pm2 logs pdd-backend`） |
 | 重启（应用代码更新后） | `pm2 restart all` 或 `pm2 restart pdd-backend` |
 | 重新读取 env（如改过端口） | `pm2 delete all && pm2 start ecosystem.config.js` |
-| 停止（服务暂停，端口立即释放） | `pm2 stop all` 或 `pm2 stop pdd-backend` |
-| 关闭（彻底停掉进程） | `pm2 delete all` 或 `pm2 delete pdd-backend` |
+| 临时停止（端口立即释放，PM2 还记着） | `pm2 stop all` 或 `pm2 stop pdd-backend` |
+| 彻底关闭（从 PM2 列表删除） | `pm2 delete all` 或 `pm2 delete pdd-backend` |
+| 应急杀全部进程 | `pm2 kill` |
 | 保存进程列表（开机恢复） | `pm2 save` + 重启后 `pm2 resurrect` |
 | 清空日志 | `pm2 flush` |
 | 监控面板 | `pm2 monit` |
+
+`stop` vs `delete` 怎么选：
+- 想**临时让位**（比如端口要给别的程序用，下次还要启动）→ `stop`
+- 想**彻底停掉、不再跑** → `delete`
+- `restart` 既不会释放端口也不会清掉 PM2 记录，只是重启进程
