@@ -120,16 +120,21 @@ function fmtCell(col, value) {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(row, i) in rows" :key="i" class="even:bg-muted/30 hover:bg-accent/40">
+        <tr v-for="(row, i) in rows" :key="i" :class="i % 2 === 1 ? 'bg-muted/30' : ''">
           <td
             v-for="(col, ci) in columns"
             :key="col"
-            class="whitespace-nowrap px-3 py-2 border-b border-border"
+            class="whitespace-nowrap px-3 py-2 border-b border-border hover:bg-accent/40"
             :class="[
               isNumericCol(col) || isPercentCol(col) ? 'text-right tabular-nums' : 'text-left',
               ci < FROZEN_COL_COUNT ? 'sticky' : ''
             ]"
-            :style="ci < FROZEN_COL_COUNT ? { left: frozenOffsets[ci] + 'px' } : undefined"
+            :style="ci < FROZEN_COL_COUNT
+              ? {
+                  left: frozenOffsets[ci] + 'px',
+                  backgroundColor: i % 2 === 1 ? 'rgb(248 250 252 / 0.95)' : 'rgb(255 255 255 / 0.95)',
+                }
+              : undefined"
           >
             {{ fmtCell(col, row[col]) }}
           </td>
