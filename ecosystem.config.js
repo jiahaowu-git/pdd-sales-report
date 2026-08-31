@@ -41,11 +41,13 @@ module.exports = {
       script: "src/server.js",
       interpreter: "node",
       env: {
-        NODE_ENV: "production",
+        // 默认 development —— 本地开发用，读 <代码>/../拼多多销售报表。
+        // 生产部署到目标机器前，在启动命令前加 NODE_ENV=production 即可。
+        // 如有需要也可显式覆盖 PDD_REPORTS_ROOT：
+        //   $env:PDD_REPORTS_ROOT="D:\data\pdd"; pm2 start ecosystem.config.js
+        NODE_ENV: "development",
         PORT: 9002,
         HOST: "0.0.0.0",
-        // 生产部署：PM2 显式注入生产路径，覆盖宿主系统继承的环境变量
-        PDD_REPORTS_ROOT: "D:\\下载\\影刀RPA下载\\拼多多销售报表",
       },
       max_memory_restart: "512M",
       out_file: "./logs/backend-out.log",
@@ -61,7 +63,9 @@ module.exports = {
       // serve.js 用 ES Modules，需通过 --input-type=module 或直接 node 14+ 支持 .mjs
       // 这里用 node 直跑 .js（package.json 里 "type": "module" 让 .js 视为 ESM）
       env: {
-        NODE_ENV: "production",
+        // 默认 development —— 本地开发用。
+        // 生产部署前改成 production（与 backend 一致）。
+        NODE_ENV: "development",
         PORT: 8002,
         HOST: "0.0.0.0",
         // /api 反代目标（与后端端口一致）

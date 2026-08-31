@@ -12,14 +12,24 @@
 
 ## 本地开发
 
-```powershell
-# 后端
-cd 代码\backend  && npm install && cd ..
-# 前端（HMR + dev server）
-cd 代码\frontend && npm install && npm run dev:pm2
-```
+后端按 `NODE_ENV` 自动选择 xlsx 根目录，默认 `development` 指向 `<代码>/../拼多多销售报表`。
 
-开发期只需 PM2 跑后端；前端用 vite dev server 自带 HMR。
+### 方式 A：PM2 全程托管（推荐，跟生产环境一致）
+```powershell
+cd 代码\backend  && npm install && cd ..
+cd 代码\frontend && npm install && npm run build && cd ..
+pm2 start ecosystem.config.js   # 默认 NODE_ENV=development，读开发路径
+```
+前端走 `serve.js`（8002）托管 `dist/`，无 HMR；改前端代码后 `npm run build && pm2 restart pdd-frontend`。
+
+### 方式 B：前端用 vite dev server（带 HMR）
+```powershell
+cd 代码\backend  && npm install && cd ..
+cd 代码\frontend && npm install
+# 两个终端分别跑：
+cd 代码\backend  && npm run dev            # nodemon + development，后端 9002
+cd 代码\frontend && npm run dev:pm2        # vite dev server，前端 8002（带 HMR）
+```
 
 ## 局域网/生产部署
 
@@ -53,9 +63,15 @@ npm run build       # 生成 dist/
 ### 3. 启动
 ```powershell
 cd D:\pdd\代码
+
+# 生产模式：xlsx 根目录 = D:\下载\影刀RPA下载\拼多多销售报表
+$env:NODE_ENV="production"
 pm2 start ecosystem.config.js
 pm2 save            # 保存进程列表，机器重启后可 pm2 resurrect 恢复
 ```
+
+> `ecosystem.config.js` 默认 `NODE_ENV=development`（本地开发用，读 `<代码>/../拼多多销售报表`）。
+> 部署到目标机器时，启动命令前加 `$env:NODE_ENV="production"` 即可，无需改任何代码。
 
 ### 4. 局域网访问
 - 前端：http://&lt;服务器IP&gt;:8002
