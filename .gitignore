@@ -25,3 +25,6 @@ Thumbs.db
 # PM2
 .pm2/
 .pm2.dump*
+
+# 生产环境 PM2 配置（不进 git，自己维护；部署到目标机后改名为 ecosystem.config.js）
+ecosystem.config.js.prod
