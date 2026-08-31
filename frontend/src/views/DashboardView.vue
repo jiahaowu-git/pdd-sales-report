@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import SummaryCards from '@/components/SummaryCards.vue';
 import LineChart from '@/components/LineChart.vue';
 
@@ -8,14 +8,39 @@ const props = defineProps({
   data: { type: Object, required: true }, // { summaryCards, chart, ... }
 });
 
-const chartList = computed(() => {
-  if (!props.data) return [];
-  return props.data.chart.series.map((s) => ({
-    name: s.name,
-    dates: props.data.chart.dates,
-    data: s.data,
-  }));
+const emit = defineEmits(['goto-detail']);
+
+// 折线图展示的 7 个系列（顺序固定）
+const CHART_SERIES = [
+  '店铺成交金额',
+  '推广交易额',
+  '推广成交花费',
+  '总退款金额',
+  '未发货退款金额',
+  '店铺净销售',
+  '推广净销售',
+];
+
+const chartSeries = computed(() => {
+  if (!props.data?.chart?.series) return [];
+  const all = props.data.chart.series;
+  const dates = props.data.chart.dates;
+  return CHART_SERIES.map((name) => {
+    const found = all.find((s) => s.name === name);
+    // 后端别名处理：'推广成交花费' 在后端写入到 '成交花费'
+    const data = found ? found.data
+      : name === '推广成交花费' ? (all.find((s) => s.name === '成交花费')?.data || [])
+      : [];
+    return { name, data };
+  }).filter((s) => s.data.length);
 });
+
+const chartDates = computed(() => props.data?.chart?.dates || []);
+
+// 折线图节点被点击时，把日期传给上层
+function onPointClick({ date }) {
+  emit('goto-detail', { date });
+}
 </script>
 
 <template>
@@ -23,27 +48,21 @@ const chartList = computed(() => {
     <SummaryCards :cards="data.summaryCards" />
 
     <Card>
-      <CardHeader>
-        <CardTitle>销售与推广数据趋势</CardTitle>
-        <CardDescription>点击趋势节点可弹出并调出当日 Excel 原始明细数据</CardDescription>
+      <CardHeader class="pb-2">
+        <CardTitle class="text-base">销售与推广数据趋势</CardTitle>
       </CardHeader>
-      <CardContent>
-        <!-- 仅在数据为空时给出提示；正常数据通过下方独立 Card 展示 -->
-        <div v-if="!chartList.length" class="py-10 text-center text-sm text-muted-foreground">
+      <CardContent class="px-2">
+        <LineChart
+          v-if="chartSeries.length"
+          :dates="chartDates"
+          :series="chartSeries"
+          height="520px"
+          @point-click="onPointClick"
+        />
+        <div v-else class="py-10 text-center text-sm text-muted-foreground">
           暂无趋势数据
         </div>
       </CardContent>
     </Card>
-
-    <div class="space-y-4">
-      <Card v-for="c in chartList" :key="c.name">
-        <CardHeader class="pb-2">
-          <CardTitle class="text-base">{{ c.name }} 趋势</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <LineChart :dates="c.dates" :series="[{ name: c.name, data: c.data }]" height="280px" />
-        </CardContent>
-      </Card>
-    </div>
   </div>
 </template>
