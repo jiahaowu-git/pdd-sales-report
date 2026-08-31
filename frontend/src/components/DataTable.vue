@@ -164,7 +164,11 @@ onBeforeUnmount(() => {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(row, i) in rows" :key="i">
+        <tr
+          v-for="(row, i) in rows"
+          :key="i"
+          :style="{ backgroundColor: i % 2 === 1 ? '#f1f5f9' : '#ffffff' }"
+        >
           <td
             v-for="(col, ci) in columns"
             :key="col"
@@ -179,17 +183,15 @@ onBeforeUnmount(() => {
                 ? {
                     position: 'sticky',
                     left: frozenOffsets[ci] + 'px',
-                    backgroundColor:
-                      i % 2 === 1 ? 'var(--muted, #f1f5f9)' : '#ffffff',
+                    // 固定列背景：直接写不透明色，不依赖 tr 透色
+                    backgroundColor: i % 2 === 1 ? '#f1f5f9' : '#ffffff',
+                    zIndex: 2,
                     boxShadow:
                       ci === FROZEN_COL_COUNT - 1 && hasScroll
                         ? '4px 0 6px -2px rgba(0,0,0,0.08)'
                         : 'none',
                   }
-                : {
-                    backgroundColor:
-                      i % 2 === 1 ? 'var(--muted, #f1f5f9)' : '#ffffff',
-                  }
+                : undefined
             "
           >
             {{ fmtCell(col, row[col]) }}
