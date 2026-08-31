@@ -49,6 +49,11 @@ function buildOption() {
       axisLabel: { color: '#64748b', formatter: (v) => Number(v).toLocaleString('zh-CN') },
     },
     dataZoom: props.dates.length > 14 ? [{ type: 'inside' }, { type: 'slider', height: 18 }] : undefined,
+    animation: true,
+    animationDuration: 900,
+    animationEasing: 'cubicOut',
+    animationDurationUpdate: 600,
+    animationEasingUpdate: 'cubicOut',
     series: props.series.map((s) => ({
       name: s.name,
       type: 'line',
@@ -57,6 +62,7 @@ function buildOption() {
       symbolSize: 10,
       itemStyle: { borderWidth: 2, borderColor: '#fff' },
       data: s.data,
+      animationDelay: (idx) => idx * 30,
     })),
   };
 }
