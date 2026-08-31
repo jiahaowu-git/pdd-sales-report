@@ -35,15 +35,20 @@ function getIndexHtml() {
 
 function sendIndexHtml(req, res) {
   let html = getIndexHtml();
-  // 在 head 里注入运行时 API base（绝对 URL），让 axios 知道真实后端位置
-  const script = `\n<script>window.__API_BASE__=${JSON.stringify(resolveApiBase(req))};</script>\n`;
+  // 运行时注入 __API_BASE__：
+  //   仅当前后端不在同一台机器时使用（管理员通过 PM2 env.API_BASE 指定绝对 URL）。
+  //   同机部署时保持空串，axios 走相对路径 /api/**，不会有 CORS 问题。
+  //   注意：自动推断（从请求头 host）出来的绝对 URL 也会触发跨域，所以
+  //   只有 PM2 env.API_BASE 显式设置时才注入。
+  const explicitApiBase = process.env.API_BASE || "";
+  const script = `\n<script>window.__API_BASE__=${JSON.stringify(explicitApiBase)};</script>\n`;
   html = html.replace(/<head>/i, `<head>${script}`);
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
   res.end(html);
 }
 
-/** 把 /api/foo 代理到 API_BASE/api/foo */
+/** 把 /api/foo 代理到 API_BASE/api/foo（同机部署时 fallback 用） */
 function proxyApi(req, res) {
   const target = new URL(resolveApiBase(req));
   const opts = {
