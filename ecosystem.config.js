@@ -1,45 +1,76 @@
 /**
- * PM2 进程管理配置（仅后端；前端请在另一个终端独立启动）
+ * PM2 进程管理配置（后端 + 前端静态服务）。
  *
  * 推荐启动方式（开发）：
- *   终端 1：cd 代码 && pm2 start ecosystem.config.js            # 后端（PM2）
+ *   终端 1：cd 代码 && pm2 start ecosystem.config.js             # 后端（PM2）
  *   终端 2：cd 代码/frontend && npm run dev:pm2                  # 前端（vite dev server + HMR）
  *
- * 推荐启动方式（生产部署）：
+ * 推荐启动方式（生产部署到任意 Win/Linux 机器）：
  *   cd 代码/frontend && npm run build                            # 生成 dist/
- *   终端 1：cd 代码 && pm2 start ecosystem.config.js            # 后端
- *   终端 2：cd 代码/frontend && npm run serve                    # 用 scripts/serve.js 跑 dist
+ *   pm2 start ecosystem.config.js                                # 同时跑后端 + 前端静态服务
  *
- * 端口与环境变量全部集中在下方 apps.env：
- *   - 后端 PORT: 9002（后端服务）
- *   - 前端 PORT: 8002（vite dev server，与 package.json dev:pm2 保持一致）
- *   - VITE_API_BASE: vite 启动时注入，前端 axios 用来访问后端
- *   如需修改端口，后端改这里 + 重启 pm2；前端改 vite.config.js + package.json 的 dev:pm2
+ * 路径说明：
+ *   - cwd 用 path.resolve(__dirname, ...) 相对此文件计算，机器无关。
+ *   - PDD_REPORTS_ROOT 默认指向 <项目根>/../拼多多销售报表，可在启动前用环境变量覆盖：
+ *       PDD_REPORTS_ROOT=D:\data\pdd pm2 start ecosystem.config.js
+ *
+ * 端口与环境变量集中在 apps.env：
+ *   - 后端 PORT: 9002
+ *   - 前端 PORT: 8002（托管 dist/，并把 /api 反代到后端 9002）
+ *   - 前端 API_BASE: http://<IP>:9002（注入前端 axios）
+ *   如需修改端口，改这里后 pm2 restart。
  *
  * 局域网访问：
  *   前端: http://<服务器IP>:8002
  *   后端: http://<服务器IP>:9002
  */
+const path = require("path");
+
+const APP_ROOT = __dirname;
+const BACKEND_CWD = path.resolve(APP_ROOT, "backend");
+const FRONTEND_CWD = path.resolve(APP_ROOT, "frontend");
+
+const DEFAULT_REPORTS_ROOT = path.resolve(APP_ROOT, "..", "拼多多销售报表");
+
 module.exports = {
   apps: [
     {
       name: "pdd-backend",
-      cwd: "E:/秀水泱泱开发/pdd-sales-report/代码/backend",
+      cwd: BACKEND_CWD,
       script: "src/server.js",
       interpreter: "node",
       env: {
         NODE_ENV: "production",
         PORT: 9002,
         HOST: "0.0.0.0",
-        // 拼多多销售报表根目录
-        PDD_REPORTS_ROOT: "E:\\秀水泱泱开发\\pdd-sales-report\\拼多多销售报表",
+        // 拼多多销售报表根目录（可被同名环境变量覆盖）
+        PDD_REPORTS_ROOT: DEFAULT_REPORTS_ROOT,
       },
       max_memory_restart: "512M",
       out_file: "./logs/backend-out.log",
       error_file: "./logs/backend-error.log",
       merge_logs: true,
       time: true,
-      // 注意：不要 push 提交 PM2 dump
+    },
+    {
+      name: "pdd-frontend",
+      cwd: FRONTEND_CWD,
+      script: "scripts/serve.js",
+      interpreter: "node",
+      // serve.js 用 ES Modules，需通过 --input-type=module 或直接 node 14+ 支持 .mjs
+      // 这里用 node 直跑 .js（package.json 里 "type": "module" 让 .js 视为 ESM）
+      env: {
+        NODE_ENV: "production",
+        PORT: 8002,
+        HOST: "0.0.0.0",
+        // /api 反代目标（与后端端口一致）
+        API_BASE: "http://127.0.0.1:9002",
+      },
+      max_memory_restart: "256M",
+      out_file: "./logs/frontend-out.log",
+      error_file: "./logs/frontend-error.log",
+      merge_logs: true,
+      time: true,
     },
   ],
 };
