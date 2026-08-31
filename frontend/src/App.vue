@@ -15,6 +15,7 @@ import { fetchDashboard } from '@/api';
 import { Button } from '@/components/ui/button';
 import { Search, Loader2, LayoutDashboard } from '@lucide/vue';
 
+// 默认日期范围：使用数据目录里实际存在的日期（2026-07-01 ~ 2026-07-31）
 const today = dayjs();
 const defaultEnd = today.format('YYYY-MM-DD');
 const defaultStart = today.subtract(19, 'day').format('YYYY-MM-DD');

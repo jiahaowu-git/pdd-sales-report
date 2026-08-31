@@ -37,6 +37,7 @@ function getDateRange(req) {
 /** 校验店铺参数 */
 function getShopName(req) {
   const { shopName } = req.query;
+  console.log('[backend] req.url=', req.url, 'shopName=', JSON.stringify(shopName));
   if (!shopName || !SHOP_DIRS[shopName]) {
     const err = new Error(`店铺参数不合法或缺失，允许值：${Object.keys(SHOP_DIRS).join('、')}`);
     err.status = 400;
