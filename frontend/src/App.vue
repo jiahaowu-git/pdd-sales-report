@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 import {
   Select,
@@ -58,6 +58,12 @@ const activeDetail = ref(null);
 
 const dashboardRef = ref(null);
 
+// 左侧明细菜单的 DOM 引用（按 fileName 索引）
+const menuItemRefs = ref({});
+function setMenuItemRef(fileName, el) {
+  if (el) menuItemRefs.value[fileName] = el;
+}
+
 async function runQuery() {
   if (!ready.value) return;
   loadingMenu.value = true;
@@ -70,6 +76,7 @@ async function runQuery() {
     });
     data.value = res.data;
     menuItems.value = res.data.menu || [];
+    menuItemRefs.value = {};
     activeKey.value = 'dashboard';
     activeDetail.value = null;
     lastQuery.value = {
@@ -104,11 +111,16 @@ function selectDetail(item) {
   activeDetail.value = item;
 }
 
-// 从图表节点跳转：按日期找对应明细菜单
-function gotoDetailByDate({ date }) {
+// 从图表节点跳转：按日期找对应明细菜单，并把左侧菜单项滚动到可视区
+async function gotoDetailByDate({ date }) {
   if (!date) return;
   const item = menuItems.value.find((m) => m.date === date);
-  if (item) selectDetail(item);
+  if (!item) return;
+  selectDetail(item);
+  // 等 DOM 更新后滚动到对应菜单项（左右两侧可能同步滚）
+  await nextTick();
+  const el = menuItemRefs.value[item.fileName];
+  el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 </script>
 
@@ -193,7 +205,7 @@ function gotoDetailByDate({ date }) {
           <ul class="mt-1 space-y-1">
             <li v-if="loadingMenu" class="px-3 py-2 text-xs text-muted-foreground">加载中...</li>
             <li v-else-if="!menuItems.length" class="px-3 py-2 text-xs text-muted-foreground">暂无明细</li>
-            <li v-for="item in menuItems" :key="item.fileName">
+            <li v-for="item in menuItems" :key="item.fileName" :ref="(el) => setMenuItemRef(item.fileName, el)">
               <button
                 type="button"
                 class="flex items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors"
