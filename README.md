@@ -64,14 +64,15 @@ npm run build       # 生成 dist/
 ```powershell
 cd D:\pdd\代码
 
-# 生产模式：xlsx 根目录 = D:\下载\影刀RPA下载\拼多多销售报表
-$env:NODE_ENV="production"
+# 用生产专用配置（已在 .gitignore 内，不进 git；本机维护）
+# 部署时把 ecosystem.config.js.prod 重命名为 ecosystem.config.js 即可
+mv ecosystem.config.js.prod ecosystem.config.js
 pm2 start ecosystem.config.js
 pm2 save            # 保存进程列表，机器重启后可 pm2 resurrect 恢复
 ```
 
-> `ecosystem.config.js` 默认 `NODE_ENV=development`（本地开发用，读 `<代码>/../拼多多销售报表`）。
-> 部署到目标机器时，启动命令前加 `$env:NODE_ENV="production"` 即可，无需改任何代码。
+> 生产配置 `ecosystem.config.js.prod` 已写死 `NODE_ENV=production`，无需任何环境变量。
+> 本地开发仍用仓库里的 `ecosystem.config.js`（默认 `NODE_ENV=development`）。
 
 ### 4. 局域网访问
 - 前端：http://&lt;服务器IP&gt;:8002
