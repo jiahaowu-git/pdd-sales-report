@@ -66,3 +66,21 @@ body {
 .scrollbar-thin::-webkit-scrollbar-track {
   background-color: transparent;
 }
+
+/* 侧栏明细列表：让每一项与上方"数据汇总看板"按钮左右对齐（缩进 12px），不要固定宽度，自适应 */
+aside nav > ul {
+  display: block;
+  width: 100%;
+}
+aside nav > ul > li {
+  display: block;
+  width: auto;
+  margin-left: 12px;
+  margin-right: 12px;
+  max-width: calc(100% - 24px);
+}
+aside nav > ul > li > button {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+}

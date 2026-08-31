@@ -15,8 +15,8 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: "0.0.0.0",
-      // 开发服务器端口可通过 VITE_PORT 调整，如 VITE_PORT=8081 npm run dev
-      port: Number(env.VITE_PORT) || 5173,
+      // 与 PM2 配置保持一致：8002（如要改端口，PM2 ecosystem.config.js + package.json dev:pm2 一起改）
+      port: Number(env.VITE_PORT) || 8002,
       proxy: {
         "/api": {
           target: backend,

@@ -24,7 +24,10 @@ function getIndexHtml() {
 }
 
 function sendIndexHtml(req, res) {
-  const html = getIndexHtml();
+  let html = getIndexHtml();
+  // 在 head 里注入运行时 API base（绝对 URL），让 axios 知道真实后端位置
+  const script = `\n<script>window.__API_BASE__=${JSON.stringify(apiBase)};</script>\n`;
+  html = html.replace(/<head>/i, `<head>${script}`);
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
   res.end(html);

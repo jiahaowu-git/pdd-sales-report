@@ -1,15 +1,20 @@
 /**
- * PM2 进程管理配置（前后端联合启动）
- * 在 代码 目录下执行：
- *   1) cd backend  && npm install && cd ..
- *   2) cd frontend && npm install && npm run build && cd ..
- *   3) pm2 start ecosystem.config.js
+ * PM2 进程管理配置（仅后端；前端请在另一个终端独立启动）
  *
- * 端口与环境变量全部集中在下方 apps.env，PM2 启动时注入到子进程：
+ * 推荐启动方式（开发）：
+ *   终端 1：cd 代码 && pm2 start ecosystem.config.js            # 后端（PM2）
+ *   终端 2：cd 代码/frontend && npm run dev:pm2                  # 前端（vite dev server + HMR）
+ *
+ * 推荐启动方式（生产部署）：
+ *   cd 代码/frontend && npm run build                            # 生成 dist/
+ *   终端 1：cd 代码 && pm2 start ecosystem.config.js            # 后端
+ *   终端 2：cd 代码/frontend && npm run serve                    # 用 scripts/serve.js 跑 dist
+ *
+ * 端口与环境变量全部集中在下方 apps.env：
  *   - 后端 PORT: 9002（后端服务）
- *   - 前端 PORT: 8002（前端静态）
- *   - API_BASE: 前端会调用该地址作为后端
- *   如需修改端口，改这里 + 重启 pm2 即可（pm2 restart pdd-frontend pdd-backend）
+ *   - 前端 PORT: 8002（vite dev server，与 package.json dev:pm2 保持一致）
+ *   - VITE_API_BASE: vite 启动时注入，前端 axios 用来访问后端
+ *   如需修改端口，后端改这里 + 重启 pm2；前端改 vite.config.js + package.json 的 dev:pm2
  *
  * 局域网访问：
  *   前端: http://<服务器IP>:8002
@@ -19,7 +24,7 @@ module.exports = {
   apps: [
     {
       name: "pdd-backend",
-      cwd: "./backend",
+      cwd: "E:/秀水泱泱开发/pdd-sales-report/代码/backend",
       script: "src/server.js",
       interpreter: "node",
       env: {
@@ -35,24 +40,6 @@ module.exports = {
       merge_logs: true,
       time: true,
       // 注意：不要 push 提交 PM2 dump
-    },
-    {
-      name: "pdd-frontend",
-      cwd: "./frontend",
-      script: "scripts/serve.js",
-      interpreter: "node",
-      env: {
-        NODE_ENV: "production",
-        PORT: 8002,
-        HOST: "0.0.0.0",
-        // 前端调用后端时使用此地址；如后端端口变更请同步修改
-        API_BASE: "http://127.0.0.1:9002",
-      },
-      max_memory_restart: "256M",
-      out_file: "./logs/frontend-out.log",
-      error_file: "./logs/frontend-error.log",
-      merge_logs: true,
-      time: true,
     },
   ],
 };
