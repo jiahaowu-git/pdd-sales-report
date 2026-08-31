@@ -6,19 +6,27 @@
 
 - `backend/`：Node.js + Express 后端，解析拼多多透视汇总表
 - `frontend/`：Vue 3 + shadcn-vue + ECharts 前端
-- `ecosystem.config.js`：PM2 进程配置（后端 + 前端静态服务）
+- `ecosystem.config.js`：PM2 开发环境配置（进 git）
+- `ecosystem.config.js.prod`：PM2 生产环境配置（不进 git，本机维护）
 
 > 原始 xlsx 数据位于 `../拼多多销售报表/`，不进 git。
 
 ## 本地开发
 
-后端按 `NODE_ENV` 自动选择 xlsx 根目录，默认 `development` 指向 `<代码>/../拼多多销售报表`。
+后端按 `NODE_ENV` 自动选择 xlsx 根目录：
+
+| `NODE_ENV`      | xlsx 根目录                                |
+| --------------- | ------------------------------------------ |
+| `development`   | `<代码>/../拼多多销售报表`（默认）          |
+| `production`    | `D:\下载\影刀RPA下载\拼多多销售报表`        |
+
+`ecosystem.config.js` 默认 `NODE_ENV=development`，直接 PM2 跑即可。
 
 ### 方式 A：PM2 全程托管（推荐，跟生产环境一致）
 ```powershell
 cd 代码\backend  && npm install && cd ..
 cd 代码\frontend && npm install && npm run build && cd ..
-pm2 start ecosystem.config.js   # 默认 NODE_ENV=development，读开发路径
+pm2 start ecosystem.config.js   # 默认 development，读开发路径
 ```
 前端走 `serve.js`（8002）托管 `dist/`，无 HMR；改前端代码后 `npm run build && pm2 restart pdd-frontend`。
 
@@ -35,21 +43,18 @@ cd 代码\frontend && npm run dev:pm2        # vite dev server，前端 8002（�
 
 ### 0. 目标机器一次性准备
 1. 安装 Node.js LTS（≥ 18），重启 PowerShell 让 PATH 生效
-2. 全局安装 PM2: `npm install -g pm2`
-3. 防火墙放行 TCP 8002 / 9002（控制面板 → 防火墙 → 高级 → 入站规则 → 新建端口规则）
+2. 全局安装 PM2：`npm install -g pm2`
+3. 防火墙放行 TCP 8002 / 9002：
+   ```powershell
+   netsh advfirewall firewall add rule name="PDD" dir=in action=allow protocol=TCP localport=9002,8002
+   ```
 
 ### 1. 拷贝文件
-- `代码/` 仓库（含子目录）
-- `拼多多销售报表/` 数据目录（不进 git，需手动拷贝）放在 `代码/` 的**上级**，与开发机目录结构一致：
-  ```
-  D:\pdd\
-  ├─ 代码\           <- git 仓库
-  └─ 拼多多销售报表\   <- 单独拷贝
-  ```
-  如目录不同，启动时用环境变量覆盖：
-  ```powershell
-  $env:PDD_REPORTS_ROOT="D:\data\pdd"; pm2 start ecosystem.config.js
-  ```
+```
+D:\pdd\
+├─ 代码\           <- git 仓库（含 ecosystem.config.js.prod）
+└─ 拼多多销售报表\   <- 单独拷贝（不进 git）
+```
 
 ### 2. 安装依赖 + 构建前端
 ```powershell
@@ -60,26 +65,24 @@ npm install --omit=dev
 npm run build       # 生成 dist/
 ```
 
-### 3. 启动
+### 3. 切到生产配置 + 启动
 ```powershell
 cd D:\pdd\代码
-
-# 用生产专用配置（已在 .gitignore 内，不进 git；本机维护）
-# 部署时把 ecosystem.config.js.prod 重命名为 ecosystem.config.js 即可
-mv ecosystem.config.js.prod ecosystem.config.js
+Rename-Item ecosystem.config.js.prod ecosystem.config.js -Force
 pm2 start ecosystem.config.js
 pm2 save            # 保存进程列表，机器重启后可 pm2 resurrect 恢复
 ```
 
-> 生产配置 `ecosystem.config.js.prod` 已写死 `NODE_ENV=production`，无需任何环境变量。
-> 本地开发仍用仓库里的 `ecosystem.config.js`（默认 `NODE_ENV=development`）。
+> `ecosystem.config.js.prod` 已写死 `NODE_ENV=production` 和生产路径，
+> 重命名后无需任何环境变量。部署到此完成。
+> 后续若要拉代码更新，重命名会被仓库的 dev 版覆盖，可以重新拷一份 `.prod` 过来再改名。
 
 ### 4. 局域网访问
 - 前端：http://&lt;服务器IP&gt;:8002
 - 后端：http://&lt;服务器IP&gt;:9002（前端内部已 /api 反代，业务无需直连后端）
 
 ### 5. 修改端口
-改 `ecosystem.config.js` 中对应 app 的 `env.PORT` / `env.API_BASE`，然后：
+改对应 PM2 配置中的 `env.PORT` / `env.API_BASE`，然后：
 ```powershell
 pm2 delete all
 pm2 start ecosystem.config.js
@@ -88,14 +91,28 @@ pm2 start ecosystem.config.js
 
 ## 路径说明
 
-`ecosystem.config.js` 中 `cwd` 用 `path.resolve(__dirname, ...)` 相对配置目录计算，机器无关。
+- PM2 配置的 `cwd` 用 `path.resolve(__dirname, ...)` 相对配置目录计算，机器无关。
+- 后端 `config.js` 解析 `PDD_REPORTS_ROOT` 的顺序：
+  1. 显式注入的环境变量 `PDD_REPORTS_ROOT`（手动覆盖）
+  2. 未注入时按 `NODE_ENV` 选默认：
+     - `development` → `<代码>/../拼多多销售报表`
+     - `production`  → `D:\下载\影刀RPA下载\拼多多销售报表`
+- 如需覆盖默认路径：
+  ```powershell
+  $env:PDD_REPORTS_ROOT="D:\data\pdd"; pm2 start ecosystem.config.js
+  ```
 
-`PDD_REPORTS_ROOT` 的解析顺序：
-1. PM2 backend app 显式注入的 `env.PDD_REPORTS_ROOT`（生产路径 `D:\下载\影刀RPA下载\拼多多销售报表`），优先级最高。
-2. 未注入时由后端 `config.js` 按 `NODE_ENV` 选择默认：
-   - `development` → `<代码>/../拼多多销售报表`（本地 `npm run dev` 用）
-   - `production`  → `D:\下载\影刀RPA下载\拼多多销售报表`
-3. 也可手动覆盖：
-   ```powershell
-   $env:PDD_REPORTS_ROOT="D:\data\pdd"; pm2 start ecosystem.config.js
-   ```
+## 常用 PM2 命令
+
+| 操作 | 命令 |
+| --- | --- |
+| 启动（首次） | `pm2 start ecosystem.config.js` |
+| 查看状态 | `pm2 status` |
+| 看日志 | `pm2 logs`（或指定 `pm2 logs pdd-backend`） |
+| 重启（应用代码更新后） | `pm2 restart all` 或 `pm2 restart pdd-backend` |
+| 重新读取 env（如改过端口） | `pm2 delete all && pm2 start ecosystem.config.js` |
+| 停止（服务暂停，端口立即释放） | `pm2 stop all` 或 `pm2 stop pdd-backend` |
+| 关闭（彻底停掉进程） | `pm2 delete all` 或 `pm2 delete pdd-backend` |
+| 保存进程列表（开机恢复） | `pm2 save` + 重启后 `pm2 resurrect` |
+| 清空日志 | `pm2 flush` |
+| 监控面板 | `pm2 monit` |
