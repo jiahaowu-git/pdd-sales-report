@@ -14,6 +14,19 @@ const fmt = (v) => {
   return v;
 };
 
+// 百分比类列（值是小数，显示成 X.XX%）
+const PERCENT_COLS = new Set(['退款率', '仅退款率', '销售占比']);
+const isPercentCol = (col) => PERCENT_COLS.has(col);
+const fmtPercent = (v) => {
+  if (v === null || v === undefined || v === '') return '-';
+  const n = Number(v);
+  if (Number.isNaN(n)) return v;
+  return (n * 100).toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }) + '%';
+};
+
 const isNumericCol = (col) => {
   // 简单推断：列名含金额/花费/交易额/退款/ROI/花费/数量 等
   return /(金额|花费|交易额|退款|ROI|数量|单价|销量)/.test(col);
@@ -40,9 +53,9 @@ const isNumericCol = (col) => {
             v-for="col in columns"
             :key="col"
             class="whitespace-nowrap px-3 py-2 border-b border-border"
-            :class="isNumericCol(col) ? 'text-right tabular-nums' : 'text-left'"
+            :class="isNumericCol(col) || isPercentCol(col) ? 'text-right tabular-nums' : 'text-left'"
           >
-            {{ fmt(row[col]) }}
+            {{ isPercentCol(col) ? fmtPercent(row[col]) : fmt(row[col]) }}
           </td>
         </tr>
         <tr v-if="!rows.length">
