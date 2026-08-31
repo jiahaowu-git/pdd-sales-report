@@ -28,6 +28,8 @@ const props = defineProps({
   height: { type: String, default: '320px' },
 });
 
+const emit = defineEmits(['point-click']);
+
 const chartEl = ref(null);
 const instance = shallowRef(null);
 
@@ -35,7 +37,7 @@ function buildOption() {
   return {
     tooltip: { trigger: 'axis' },
     legend: { type: 'scroll', top: 0, left: 'center' },
-    grid: { top: 40, left: 60, right: 24, bottom: 40, containLabel: true },
+    grid: { top: 40, left: 8, right: 24, bottom: 40, containLabel: true },
     xAxis: {
       type: 'category',
       boundaryGap: false,
@@ -62,6 +64,15 @@ function render() {
   if (!chartEl.value) return;
   if (!instance.value) instance.value = echarts.init(chartEl.value);
   instance.value.setOption(buildOption(), true);
+  // 点击某个数据点（任意系列上的点）都视为点击该日期
+  instance.value.off('click');
+  instance.value.on('click', (params) => {
+    // 坐标轴类点击时 dataIndex 表示 x 轴索引
+    const idx = params?.dataIndex;
+    if (idx === undefined || idx === null) return;
+    const date = props.dates[idx];
+    if (date) emit('point-click', { date, dataIndex: idx });
+  });
 }
 
 function resize() {
