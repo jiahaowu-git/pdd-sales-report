@@ -15,7 +15,7 @@ const fmt = (v) => {
 };
 
 // 百分比类列（值是小数，显示成 X.XX%）
-const PERCENT_COLS = new Set(['退款率', '仅退款率', '销售占比']);
+const PERCENT_COLS = new Set(['退货率', '仅退款率', '销售占比']);
 const isPercentCol = (col) => PERCENT_COLS.has(col);
 const fmtPercent = (v) => {
   if (v === null || v === undefined || v === '') return '-';
