@@ -1,33 +1,33 @@
 // 后端 HTTP 服务
 // 允许 PM2 传入的 env 覆盖 .env 文件
-require('dotenv').config({ override: false });
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const dayjs = require('dayjs');
+require("dotenv").config({ override: false });
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
+const dayjs = require("dayjs");
 
-const { ROOT, SUMMARY_COLUMNS, SHOP_DIRS } = require('./config');
-const { readSummaryWorkbook, listFilesInRange } = require('./excel');
+const { ROOT, SUMMARY_COLUMNS, SHOP_DIRS } = require("./config");
+const { readSummaryWorkbook, listFilesInRange } = require("./excel");
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: "10mb" }));
 
 /** 校验日期范围参数 */
 function getDateRange(req) {
   const { startDate, endDate } = req.query;
   if (!startDate || !endDate) {
-    const err = new Error('参数缺失：需要 startDate 与 endDate (YYYY-MM-DD)');
+    const err = new Error("参数缺失：需要 startDate 与 endDate (YYYY-MM-DD)");
     err.status = 400;
     throw err;
   }
   if (!dayjs(startDate).isValid() || !dayjs(endDate).isValid()) {
-    const err = new Error('日期格式不合法，应为 YYYY-MM-DD');
+    const err = new Error("日期格式不合法，应为 YYYY-MM-DD");
     err.status = 400;
     throw err;
   }
   if (dayjs(startDate).isAfter(endDate)) {
-    const err = new Error('开始日期不能晚于结束日期');
+    const err = new Error("开始日期不能晚于结束日期");
     err.status = 400;
     throw err;
   }
@@ -37,9 +37,16 @@ function getDateRange(req) {
 /** 校验店铺参数 */
 function getShopName(req) {
   const { shopName } = req.query;
-  console.log('[backend] req.url=', req.url, 'shopName=', JSON.stringify(shopName));
+  console.log(
+    "[backend] req.url=",
+    req.url,
+    "shopName=",
+    JSON.stringify(shopName),
+  );
   if (!shopName || !SHOP_DIRS[shopName]) {
-    const err = new Error(`店铺参数不合法或缺失，允许值：${Object.keys(SHOP_DIRS).join('、')}`);
+    const err = new Error(
+      `店铺参数不合法或缺失，允许值：${Object.keys(SHOP_DIRS).join("、")}`,
+    );
     err.status = 400;
     throw err;
   }
@@ -60,7 +67,7 @@ app.use((err, req, res, next) => {
  *   - menu         : 明细文件菜单列表 [{ date, fileName, menuLabel }]
  *   - totals       : 同 summaryCards 但也返回方便扩展
  */
-app.get('/api/dashboard', async (req, res, next) => {
+app.get("/api/dashboard", async (req, res, next) => {
   try {
     const shopName = getShopName(req);
     const { startDate, endDate } = getDateRange(req);
@@ -73,7 +80,11 @@ app.get('/api/dashboard', async (req, res, next) => {
     for (const f of files) {
       const { summary } = await readSummaryWorkbook(f.fullPath);
       for (const [date, cols] of Object.entries(summary)) {
-        if (!dailyMap.has(date)) dailyMap.set(date, Object.fromEntries(SUMMARY_COLUMNS.map((c) => [c, 0])));
+        if (!dailyMap.has(date))
+          dailyMap.set(
+            date,
+            Object.fromEntries(SUMMARY_COLUMNS.map((c) => [c, 0])),
+          );
         const acc = dailyMap.get(date);
         for (const c of SUMMARY_COLUMNS) acc[c] += Number(cols[c] || 0);
       }
@@ -94,11 +105,69 @@ app.get('/api/dashboard', async (req, res, next) => {
       for (const c of SUMMARY_COLUMNS) summaryCards[c] += Number(acc[c] || 0);
     }
     // 数值保留两位小数
-    Object.keys(summaryCards).forEach((k) => (summaryCards[k] = Number(summaryCards[k].toFixed(2))));
-    // 整体推广 ROI：推广交易额 / 成交花费
-    summaryCards['整体推广 ROI'] = summaryCards['成交花费']
-      ? Number((summaryCards['推广交易额'] / summaryCards['成交花费']).toFixed(2))
+    Object.keys(summaryCards).forEach(
+      (k) => (summaryCards[k] = Number(summaryCards[k].toFixed(2))),
+    );
+
+    // 卡片标题里"推广成交花费"对应底表的"成交花费"，这里加别名便于前端直接拿
+    summaryCards["推广成交花费"] = summaryCards["成交花费"];
+
+    // 派生字段（前端卡片直接展示）
+    // 1. 店铺净销售 = 店铺成交金额 - 总退款金额
+    summaryCards["店铺净销售"] = Number(
+      (summaryCards["店铺成交金额"] - summaryCards["总退款金额"]).toFixed(2),
+    );
+    // 2. 推广净销售 = 推广交易额 - 总退款金额
+    summaryCards["推广净销售"] = Number(
+      (summaryCards["推广交易额"] - summaryCards["总退款金额"]).toFixed(2),
+    );
+    // 3. 店铺 ROI = 店铺净销售 / 推广成交花费
+    summaryCards["店铺ROI"] = summaryCards["推广成交花费"]
+      ? Number(
+          (summaryCards["店铺净销售"] / summaryCards["推广成交花费"]).toFixed(
+            2,
+          ),
+        )
       : 0;
+    // 4. 推广 ROI = 推广净销售 / 推广成交花费
+    summaryCards["推广ROI"] = summaryCards["推广成交花费"]
+      ? Number(
+          (summaryCards["推广净销售"] / summaryCards["推广成交花费"]).toFixed(
+            2,
+          ),
+        )
+      : 0;
+    // 5. 退款率 = 总退款金额 / 推广交易额
+    summaryCards["退款率"] = summaryCards["推广交易额"]
+      ? Number(
+          (summaryCards["总退款金额"] / summaryCards["推广交易额"]).toFixed(4),
+        )
+      : 0;
+    // 6. 仅退款率 = 未发货退款金额 / 总退款金额
+    summaryCards["仅退款率"] = summaryCards["总退款金额"]
+      ? Number(
+          (summaryCards["未发货退款金额"] / summaryCards["总退款金额"]).toFixed(
+            4,
+          ),
+        )
+      : 0;
+
+    // 图表里增加派生指标"店铺净销售 / 推广净销售"的每日序列，
+    // 让前端折线图能展示 7 个系列
+    chartSeries.push({
+      name: "店铺净销售",
+      data: dates.map((d) => {
+        const a = dailyMap.get(d);
+        return Number((a["店铺成交金额"] - a["总退款金额"]).toFixed(2));
+      }),
+    });
+    chartSeries.push({
+      name: "推广净销售",
+      data: dates.map((d) => {
+        const a = dailyMap.get(d);
+        return Number((a["推广交易额"] - a["总退款金额"]).toFixed(2));
+      }),
+    });
 
     const menu = files.map((f) => ({
       date: f.date,
@@ -126,17 +195,17 @@ app.get('/api/dashboard', async (req, res, next) => {
  * GET /api/detail?shopName=&startDate=&endDate=&fileName=
  * 返回某个明细文件的完整数据行。
  */
-app.get('/api/detail', async (req, res, next) => {
+app.get("/api/detail", async (req, res, next) => {
   try {
     const shopName = getShopName(req);
     const { startDate, endDate, fileName } = req.query;
     if (!startDate || !endDate) {
-      const err = new Error('需要 startDate 与 endDate');
+      const err = new Error("需要 startDate 与 endDate");
       err.status = 400;
       throw err;
     }
     if (!fileName) {
-      const err = new Error('需要 fileName');
+      const err = new Error("需要 fileName");
       err.status = 400;
       throw err;
     }
@@ -147,7 +216,7 @@ app.get('/api/detail', async (req, res, next) => {
     // 安全校验：必须落在 startDate ~ endDate 区间内
     const allowed = listFilesInRange(shopDir, startDate, endDate);
     if (!allowed.find((f) => f.fullPath === fullPath)) {
-      const err = new Error('文件不在所选日期范围内或无权访问');
+      const err = new Error("文件不在所选日期范围内或无权访问");
       err.status = 403;
       throw err;
     }
@@ -163,12 +232,12 @@ app.get('/api/detail', async (req, res, next) => {
 });
 
 /** 健康检查 */
-app.get('/api/health', (req, res) => {
-  res.json({ code: 0, message: 'ok' });
+app.get("/api/health", (req, res) => {
+  res.json({ code: 0, message: "ok" });
 });
 
 const PORT = Number(process.env.PORT || 3001);
-const HOST = process.env.HOST || '0.0.0.0';
+const HOST = process.env.HOST || "0.0.0.0";
 
 app.listen(PORT, HOST, () => {
   // eslint-disable-next-line no-console
