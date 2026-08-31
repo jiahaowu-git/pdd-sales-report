@@ -43,11 +43,12 @@ module.exports = {
       env: {
         // 默认 development —— 本地开发用，读 <代码>/../拼多多销售报表。
         // 生产部署到目标机器前，在启动命令前加 NODE_ENV=production 即可。
-        // 如有需要也可显式覆盖 PDD_REPORTS_ROOT：
-        //   $env:PDD_REPORTS_ROOT="D:\data\pdd"; pm2 start ecosystem.config.js
+        // PDD_REPORTS_ROOT 显式设为空串，强制覆盖掉 PM2 父进程从外部继承的环境变量，
+        // 让 NODE_ENV 默认值生效；如确需自定义路径，取消下一行注释并填实际路径。
         NODE_ENV: "development",
         PORT: 9002,
         HOST: "0.0.0.0",
+        PDD_REPORTS_ROOT: "",
       },
       max_memory_restart: "512M",
       out_file: "./logs/backend-out.log",

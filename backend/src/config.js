@@ -2,9 +2,12 @@
 const path = require("path");
 
 // 拼多多销售报表根目录，优先级：
-//   1) 环境变量 PDD_REPORTS_ROOT（最高，手动覆盖用）
-//   2) NODE_ENV === 'development'  → 开发机默认路径 <代码>/../拼多多销售报表
-//   3) NODE_ENV === 'production'   → 生产机器默认路径 D:\下载\影刀RPA下载\拼多多销售报表
+//   1) 环境变量 PDD_REPORTS_ROOT（手动覆盖用；空串或空白等价于未设置）
+//   2) NODE_ENV === 'production'   → 生产机器默认路径 D:\下载\影刀RPA下载\拼多多销售报表
+//   3) NODE_ENV === 'development'  → 开发机默认路径 <代码>/../拼多多销售报表
+//
+// 注意：PM2 启动时进程会从父进程 env 继承 PDD_REPORTS_ROOT，必须用 trim() 后
+// 判空，避免外部环境变量污染默认值。
 const NODE_ENV = process.env.NODE_ENV || "development";
 
 const DEV_REPORTS_ROOT = path.resolve(__dirname, "../../拼多多销售报表");
@@ -13,7 +16,8 @@ const PROD_REPORTS_ROOT = "D:\\下载\\影刀RPA下载\\拼多多销售报表";
 const DEFAULT_REPORTS_ROOT =
   NODE_ENV === "production" ? PROD_REPORTS_ROOT : DEV_REPORTS_ROOT;
 
-const ROOT = process.env.PDD_REPORTS_ROOT || DEFAULT_REPORTS_ROOT;
+const explicitRoot = (process.env.PDD_REPORTS_ROOT || "").trim();
+const ROOT = explicitRoot || DEFAULT_REPORTS_ROOT;
 
 // 汇总聚合列：出现在数据看板顶部卡片 + 折线图中
 const SUMMARY_COLUMNS = [
