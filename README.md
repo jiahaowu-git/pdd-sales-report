@@ -28,7 +28,11 @@ cd 代码\backend  && npm install && cd ..
 cd 代码\frontend && npm install && npm run build && cd ..
 pm2 start ecosystem.config.js   # 默认 development，读开发路径
 ```
-前端走 `serve.js`（8002）托管 `dist/`，无 HMR；改前端代码后 `npm run build && pm2 restart pdd-frontend`。
+前端走 `serve.js`（8002）托管 `dist/`，无 HMR；改前端代码后**必须**：
+```powershell
+cd 代码\frontend && npm run build && pm2 restart pdd-frontend
+```
+否则浏览器看到的是旧 `dist/`（缓存的 js 文件）。
 
 ### 方式 B：前端用 vite dev server（带 HMR）
 ```powershell
