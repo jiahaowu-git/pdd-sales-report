@@ -50,19 +50,30 @@ cd 代码\frontend && npm run dev:pm2        # vite dev server，前端 8002（�
    ```
 
 ### 1. 拷贝文件
+**只拷源码 + dist + PM2 配置，不拷 node_modules**（目标机现场装）：
 ```
 D:\pdd\
 ├─ 代码\           <- git 仓库（含 ecosystem.config.js.prod）
+│  ├─ backend\
+│  │  ├─ src\
+│  │  ├─ package.json
+│  │  └─ package-lock.json
+│  ├─ frontend\
+│  │  ├─ scripts\serve.js         <- 必须有
+│  │  ├─ package.json
+│  │  ├─ package-lock.json
+│  │  └─ dist\                     <- 必须有（前端构建产物）
+│  └─ ecosystem.config.js.prod
 └─ 拼多多销售报表\   <- 单独拷贝（不进 git）
 ```
 
 ### 2. 安装依赖 + 构建前端
 ```powershell
 cd D:\pdd\代码\backend
-npm install --omit=dev
+npm install --omit=dev              # 后端依赖（cors/express/exceljs 等）
 cd ..\frontend
-npm install --omit=dev
-npm run build       # 生成 dist/
+npm install --omit=dev              # 前端依赖（关键是 serve-handler）
+npm run build                        # 生成 dist/（如果拷过来的已经是 dist 跳过这步）
 ```
 
 ### 3. 切到生产配置 + 启动
