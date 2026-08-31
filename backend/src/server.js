@@ -154,14 +154,9 @@ app.get("/api/dashboard", async (req, res, next) => {
           ),
         )
       : 0;
-    // 7. 销售占比 = 店铺成交金额 / 推广交易额
-    summaryCards["销售占比"] = summaryCards["推广交易额"]
-      ? Number(
-          (summaryCards["店铺成交金额"] / summaryCards["推广交易额"]).toFixed(
-            4,
-          ),
-        )
-      : 0;
+    // 注：销售占比（店铺成交金额 / 推广交易额）在按店铺聚合场景下恒为 100%，
+    //     没有信息量，因此不在 summaryCards 中计算。
+    //     明细表里仍保留这一列——直接从每日 xlsx 文件里读取。
 
     // 图表里增加派生指标"店铺净销售 / 推广净销售"的每日序列，
     // 让前端折线图能展示 7 个系列
