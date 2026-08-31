@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight } from '@lucide/vue';
 import {
-  startOfMonth, endOfMonth, startOfWeek, endOfWeek,
+  startOfMonth, endOfMonth, startOfWeek, endOfWeek, subDays,
   eachDayOfInterval, format, addMonths, isSameDay, isWithinInterval, isBefore, isAfter,
 } from 'date-fns';
 
@@ -19,7 +19,9 @@ const emit = defineEmits(['update:modelValue']);
 
 const open = ref(false);
 const today = new Date();
-const viewMonth = ref(new Date(today.getFullYear(), today.getMonth(), 1));
+// 最大可选日期为"昨天"（不允许选今天及以后，避免误选无数据的未来日期）
+const maxDate = subDays(today, 1);
+const viewMonth = ref(new Date(maxDate.getFullYear(), maxDate.getMonth(), 1));
 const startDraft = ref(null);
 const endDraft = ref(null);
 
@@ -47,8 +49,14 @@ function isInRange(d) {
   if (!startDraft.value || !endDraft.value) return false;
   return isWithinInterval(d, { start: startDraft.value, end: endDraft.value });
 }
+// 超过 maxDate（昨天）的日期都不可选
+function isDisabled(d) {
+  return isAfter(d, maxDate);
+}
 
 function pick(d) {
+  // 拦截未来日期（含今天），不允许选择
+  if (isAfter(d, maxDate)) return;
   if (!startDraft.value || (startDraft.value && endDraft.value)) {
     startDraft.value = d;
     endDraft.value = null;
@@ -146,6 +154,7 @@ const displayText = computed(() => {
               'bg-accent text-accent-foreground rounded-none': isInRange(d) && !isStart(d) && !isEnd(d),
               'bg-accent/40': isSameDay(d, today),
             }"
+            :disabled="isDisabled(d)"
             @click="pick(d)"
           >
             {{ d.getDate() }}
