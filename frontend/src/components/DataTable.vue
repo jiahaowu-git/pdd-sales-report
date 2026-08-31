@@ -142,21 +142,21 @@ onBeforeUnmount(() => {
             v-for="(col, ci) in columns"
             :key="col"
             class="whitespace-nowrap px-3 py-2 text-left font-medium text-muted-foreground border-b border-border"
-            :class="
-              ci < FROZEN_COL_COUNT ? 'sticky' : 'bg-muted/80 backdrop-blur'
-            "
             :style="
               ci < FROZEN_COL_COUNT
                 ? {
                     left: frozenOffsets[ci] + 'px',
                     zIndex: 30,
-                    backgroundColor: '#f1f5f9',
+                    position: 'sticky',
+                    backgroundColor: 'var(--muted, #f1f5f9)',
                     boxShadow:
                       ci === FROZEN_COL_COUNT - 1 && hasScroll
                         ? '4px 0 6px -2px rgba(0,0,0,0.08)'
                         : 'none',
                   }
-                : undefined
+                : {
+                    backgroundColor: 'var(--muted, #f1f5f9)',
+                  }
             "
           >
             {{ col }}
@@ -164,32 +164,32 @@ onBeforeUnmount(() => {
         </tr>
       </thead>
       <tbody>
-        <tr
-          v-for="(row, i) in rows"
-          :key="i"
-          :class="i % 2 === 1 ? 'bg-muted/30' : ''"
-        >
+        <tr v-for="(row, i) in rows" :key="i">
           <td
             v-for="(col, ci) in columns"
             :key="col"
             class="whitespace-nowrap px-3 py-2 border-b border-border hover:bg-accent/40"
-            :class="[
+            :class="
               isNumericCol(col) || isPercentCol(col)
                 ? 'text-right tabular-nums'
-                : 'text-left',
-              ci < FROZEN_COL_COUNT ? 'sticky' : '',
-            ]"
+                : 'text-left'
+            "
             :style="
               ci < FROZEN_COL_COUNT
                 ? {
+                    position: 'sticky',
                     left: frozenOffsets[ci] + 'px',
-                    backgroundColor: i % 2 === 1 ? '#f8fafc' : '#ffffff',
+                    backgroundColor:
+                      i % 2 === 1 ? 'var(--muted, #f1f5f9)' : '#ffffff',
                     boxShadow:
                       ci === FROZEN_COL_COUNT - 1 && hasScroll
                         ? '4px 0 6px -2px rgba(0,0,0,0.08)'
                         : 'none',
                   }
-                : undefined
+                : {
+                    backgroundColor:
+                      i % 2 === 1 ? 'var(--muted, #f1f5f9)' : '#ffffff',
+                  }
             "
           >
             {{ fmtCell(col, row[col]) }}
@@ -206,21 +206,20 @@ onBeforeUnmount(() => {
         <tr
           v-if="rows.length"
           class="font-semibold sticky bottom-0 border-t-2 border-border"
-          style="background-color: #e2e8f0"
         >
           <td
             v-for="(col, ci) in columns"
             :key="col"
             class="whitespace-nowrap px-3 py-2"
-            :class="[
+            :class="
               isNumericCol(col) || isPercentCol(col)
                 ? 'text-right tabular-nums'
-                : 'text-left',
-              ci < FROZEN_COL_COUNT ? 'sticky' : '',
-            ]"
+                : 'text-left'
+            "
             :style="
               ci < FROZEN_COL_COUNT
                 ? {
+                    position: 'sticky',
                     left: frozenOffsets[ci] + 'px',
                     zIndex: 5,
                     backgroundColor: '#e2e8f0',
@@ -229,7 +228,9 @@ onBeforeUnmount(() => {
                         ? '4px 0 6px -2px rgba(0,0,0,0.08)'
                         : 'none',
                   }
-                : undefined
+                : {
+                    backgroundColor: '#e2e8f0',
+                  }
             "
           >
             <template v-if="SUM_COLS.has(col) || RATIO_COLS.has(col)">
