@@ -69,8 +69,8 @@ module.exports = {
         PORT: 8002,
         HOST: "0.0.0.0",
         // /api 反代目标（与后端端口一致）。
-        // 同机部署时保持注释：axios 走相对路径 /api/**，避免 CORS 与 IP 写死。
-        // 前后端分机部署时取消注释并改成后端实际 IP：
+        // 默认不设置：serve.js 会从请求头 host 自动推断本机 IP 并注入到前端。
+        // 前后端分机部署时改成后端实际 IP：
         // API_BASE: "http://192.168.1.20:9002",
       },
       max_memory_restart: "256M",
