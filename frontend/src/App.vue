@@ -275,6 +275,9 @@ async function gotoDetailByDate({ date }) {
         v-if="activeKey === 'dashboard' && data"
         ref="dashboardRef"
         :data="data"
+        :shop-name="shopName"
+        :start-date="dateRange.start"
+        :end-date="dateRange.end"
         @goto-detail="gotoDetailByDate"
       />
       <DetailView

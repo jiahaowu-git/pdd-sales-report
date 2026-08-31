@@ -6,6 +6,9 @@ import LineChart from '@/components/LineChart.vue';
 
 const props = defineProps({
   data: { type: Object, required: true }, // { summaryCards, chart, ... }
+  shopName: { type: String, default: '' },
+  startDate: { type: String, default: '' },
+  endDate: { type: String, default: '' },
 });
 
 const emit = defineEmits(['goto-detail']);
@@ -36,6 +39,21 @@ const chartSeries = computed(() => {
 });
 
 const chartDates = computed(() => props.data?.chart?.dates || []);
+
+// 图表标题：日期范围 + 店铺名 + "数据折线图"
+const chartTitle = computed(() => {
+  const range =
+    props.startDate && props.endDate
+      ? props.startDate === props.endDate
+        ? props.startDate
+        : `${props.startDate} 至 ${props.endDate}`
+      : '';
+  const shop = props.shopName || '';
+  if (range && shop) return `${range} ${shop} 数据折线图`;
+  if (range) return `${range} 数据折线图`;
+  if (shop) return `${shop} 数据折线图`;
+  return '销售与推广数据趋势';
+});
 
 // 折线图节点被点击时，把日期传给上层
 function onPointClick({ date }) {
