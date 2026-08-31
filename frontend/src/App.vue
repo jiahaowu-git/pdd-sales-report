@@ -209,7 +209,7 @@ async function gotoDetailByDate({ date }) {
               <button
                 type="button"
                 class="flex items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors"
-                :class="activeKey === `detail-${item.fileName}` ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/60'"
+                :class="activeKey === `detail-${item.fileName}` ? 'bg-secondary text-secondary-foreground font-medium' : 'hover:bg-accent/60'"
                 @click="selectDetail(item)"
               >
                 <span class="truncate">{{ item.date }}</span>
