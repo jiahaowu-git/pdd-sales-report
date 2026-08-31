@@ -11,7 +11,10 @@
  *
  * 路径说明：
  *   - cwd 用 path.resolve(__dirname, ...) 相对此文件计算，机器无关。
- *   - PDD_REPORTS_ROOT 默认指向 <项目根>/../拼多多销售报表，可在启动前用环境变量覆盖：
+ *   - PDD_REPORTS_ROOT 默认由后端 config.js 按 NODE_ENV 选择：
+ *       development → <项目根>/../拼多多销售报表
+ *       production  → D:\下载\影刀RPA下载\拼多多销售报表
+ *     也可手动覆盖：
  *       PDD_REPORTS_ROOT=D:\data\pdd pm2 start ecosystem.config.js
  *
  * 端口与环境变量集中在 apps.env：
@@ -30,8 +33,6 @@ const APP_ROOT = __dirname;
 const BACKEND_CWD = path.resolve(APP_ROOT, "backend");
 const FRONTEND_CWD = path.resolve(APP_ROOT, "frontend");
 
-const DEFAULT_REPORTS_ROOT = path.resolve(APP_ROOT, "..", "拼多多销售报表");
-
 module.exports = {
   apps: [
     {
@@ -43,8 +44,8 @@ module.exports = {
         NODE_ENV: "production",
         PORT: 9002,
         HOST: "0.0.0.0",
-        // 拼多多销售报表根目录（可被同名环境变量覆盖）
-        PDD_REPORTS_ROOT: DEFAULT_REPORTS_ROOT,
+        // 生产部署：PM2 显式注入生产路径，覆盖宿主系统继承的环境变量
+        PDD_REPORTS_ROOT: "D:\\下载\\影刀RPA下载\\拼多多销售报表",
       },
       max_memory_restart: "512M",
       out_file: "./logs/backend-out.log",

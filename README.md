@@ -71,5 +71,14 @@ pm2 start ecosystem.config.js
 
 ## 路径说明
 
-`ecosystem.config.js` 中 `cwd` 用 `path.resolve(__dirname, ...)` 相对配置目录计算，
-`PDD_REPORTS_ROOT` 默认 `<代码>/../拼多多销售报表`，无需根据部署机器修改。
+`ecosystem.config.js` 中 `cwd` 用 `path.resolve(__dirname, ...)` 相对配置目录计算，机器无关。
+
+`PDD_REPORTS_ROOT` 的解析顺序：
+1. PM2 backend app 显式注入的 `env.PDD_REPORTS_ROOT`（生产路径 `D:\下载\影刀RPA下载\拼多多销售报表`），优先级最高。
+2. 未注入时由后端 `config.js` 按 `NODE_ENV` 选择默认：
+   - `development` → `<代码>/../拼多多销售报表`（本地 `npm run dev` 用）
+   - `production`  → `D:\下载\影刀RPA下载\拼多多销售报表`
+3. 也可手动覆盖：
+   ```powershell
+   $env:PDD_REPORTS_ROOT="D:\data\pdd"; pm2 start ecosystem.config.js
+   ```
