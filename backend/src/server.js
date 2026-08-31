@@ -78,7 +78,10 @@ app.get("/api/dashboard", async (req, res, next) => {
     // 按日期顺序汇总
     const dailyMap = new Map(); // date -> { 列名 -> 数值 }
     for (const f of files) {
-      const { summary } = await readSummaryWorkbook(f.fullPath);
+      const { summary } = await readSummaryWorkbook(f.fullPath, {
+        fileDate: f.source === "daily" ? f.date : null,
+        fileDateRange: f.source === "range" ? f.dateRange : null,
+      });
       for (const [date, cols] of Object.entries(summary)) {
         if (!dailyMap.has(date))
           dailyMap.set(

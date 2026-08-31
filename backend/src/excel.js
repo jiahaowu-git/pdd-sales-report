@@ -10,8 +10,13 @@ const { SUMMARY_COLUMNS, DATE_COLUMN } = require("./config");
  * rows    : 明细行数组（对象数组，键为列名）
  * columns : 表格列名数组（保持原始顺序）
  * summary : 各汇总列按日期聚合后的 { 'YYYY-MM-DD': {列名: 数值} }
+ *
+ * 每日文件没有"日期列"，日期由调用方通过 fileDate / fileDateRange 从文件名传入；
+ * 区间表虽然有日期列，但首列内容是 "YYYY-MM-DD 至 YYYY-MM-DD" 这种字符串
+ * 无法被 dayjs 解析，故也以文件名日期为准。
  */
-async function readSummaryWorkbook(filePath) {
+async function readSummaryWorkbook(filePath, options = {}) {
+  const { fileDate, fileDateRange } = options;
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(filePath);
 
@@ -38,16 +43,21 @@ async function readSummaryWorkbook(filePath) {
       obj[col] = normalizeCellValue(v, col === DATE_COLUMN);
     });
 
-    const dateKey = obj[DATE_COLUMN];
+    // 优先用表格里的日期列；解析失败时回退到文件名传入的日期
+    let dateKey = obj[DATE_COLUMN];
+    if (!dateKey || !dayjs(dateKey).isValid()) {
+      dateKey = fileDate || (fileDateRange && fileDateRange[0]) || null;
+    }
     if (dateKey) {
-      if (!summary[dateKey]) {
-        summary[dateKey] = Object.fromEntries(
-          SUMMARY_COLUMNS.map((c) => [c, 0]),
-        );
+      const k = dayjs(dateKey).isValid()
+        ? dayjs(dateKey).format("YYYY-MM-DD")
+        : String(dateKey);
+      if (!summary[k]) {
+        summary[k] = Object.fromEntries(SUMMARY_COLUMNS.map((c) => [c, 0]));
       }
       SUMMARY_COLUMNS.forEach((c) => {
         const n = Number(obj[c]);
-        if (!Number.isNaN(n)) summary[dateKey][c] += n;
+        if (!Number.isNaN(n)) summary[k][c] += n;
       });
     }
     rows.push(obj);
