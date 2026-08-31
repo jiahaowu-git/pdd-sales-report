@@ -6,6 +6,24 @@ const props = defineProps({
   rows: { type: Array, default: () => [] },
 });
 
+// 固定列数（横向滚动时左侧一直可见）
+const FROZEN_COL_COUNT = 2;
+
+// 计算固定列宽度（用于 sticky left 偏移量）
+// 用列的近似最大宽度估计：第一列固定宽 160px，其余后续列左偏移累加。
+// 注意：实际宽度取决于内容，但这样估算后视觉上"前两列常驻左侧"已够用，
+// 列宽差异由 min-w 兜底，不会出现错位。
+const COL_WIDTHS = [180, 160]; // 前两列最小宽度（像素）
+const frozenOffsets = computed(() => {
+  const offsets = [];
+  let acc = 0;
+  for (let i = 0; i < FROZEN_COL_COUNT; i++) {
+    offsets.push(acc);
+    acc += COL_WIDTHS[i] || 0;
+  }
+  return offsets;
+});
+
 const fmt = (v) => {
   if (v === null || v === undefined || v === '') return '-';
   if (typeof v === 'number') {
@@ -80,13 +98,22 @@ function fmtCell(col, value) {
 
 <template>
   <div class="overflow-auto rounded-lg border border-border bg-card scrollbar-thin" style="max-height: calc(100vh - 200px);">
-    <table class="w-full text-sm">
-      <thead class="sticky top-0 z-10 bg-muted/80 backdrop-blur">
+    <table class="w-full text-sm border-separate border-spacing-0">
+      <colgroup>
+        <col
+          v-for="(col, idx) in columns"
+          :key="col"
+          :style="idx < FROZEN_COL_COUNT ? { minWidth: COL_WIDTHS[idx] + 'px' } : undefined"
+        />
+      </colgroup>
+      <thead class="sticky top-0 z-20">
         <tr>
           <th
-            v-for="col in columns"
+            v-for="(col, ci) in columns"
             :key="col"
             class="whitespace-nowrap px-3 py-2 text-left font-medium text-muted-foreground border-b border-border"
+            :class="ci < FROZEN_COL_COUNT ? 'sticky bg-muted/90 backdrop-blur' : 'bg-muted/80 backdrop-blur'"
+            :style="ci < FROZEN_COL_COUNT ? { left: frozenOffsets[ci] + 'px', zIndex: 30 } : undefined"
           >
             {{ col }}
           </th>
@@ -95,10 +122,14 @@ function fmtCell(col, value) {
       <tbody>
         <tr v-for="(row, i) in rows" :key="i" class="even:bg-muted/30 hover:bg-accent/40">
           <td
-            v-for="col in columns"
+            v-for="(col, ci) in columns"
             :key="col"
             class="whitespace-nowrap px-3 py-2 border-b border-border"
-            :class="isNumericCol(col) || isPercentCol(col) ? 'text-right tabular-nums' : 'text-left'"
+            :class="[
+              isNumericCol(col) || isPercentCol(col) ? 'text-right tabular-nums' : 'text-left',
+              ci < FROZEN_COL_COUNT ? 'sticky' : ''
+            ]"
+            :style="ci < FROZEN_COL_COUNT ? { left: frozenOffsets[ci] + 'px' } : undefined"
           >
             {{ fmtCell(col, row[col]) }}
           </td>
@@ -113,10 +144,14 @@ function fmtCell(col, value) {
           class="bg-muted/60 font-semibold sticky bottom-0 border-t-2 border-border"
         >
           <td
-            v-for="col in columns"
+            v-for="(col, ci) in columns"
             :key="col"
             class="whitespace-nowrap px-3 py-2"
-            :class="isNumericCol(col) || isPercentCol(col) ? 'text-right tabular-nums' : 'text-left'"
+            :class="[
+              isNumericCol(col) || isPercentCol(col) ? 'text-right tabular-nums' : 'text-left',
+              ci < FROZEN_COL_COUNT ? 'sticky bg-muted/60' : ''
+            ]"
+            :style="ci < FROZEN_COL_COUNT ? { left: frozenOffsets[ci] + 'px', zIndex: 5 } : undefined"
           >
             <template v-if="SUM_COLS.has(col) || RATIO_COLS.has(col)">
               {{ fmtCell(col, sumRow[col]) }}
