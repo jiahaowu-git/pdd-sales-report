@@ -20,10 +20,12 @@ function updateScrollState() {
 const FROZEN_COL_COUNT = 2;
 
 // 计算固定列宽度（用于 sticky left 偏移量）
-// 用列的近似最大宽度估计：第一列固定宽 160px，其余后续列左偏移累加。
-// 注意：实际宽度取决于内容，但这样估算后视觉上"前两列常驻左侧"已够用，
-// 列宽差异由 min-w 兜底，不会出现错位。
-const COL_WIDTHS = [180, 160]; // 前两列最小宽度（像素）
+// 第一列是 ID 类文本（等宽紧凑），第二列是较长的字符串（如"净目标投产比: 3.49"）
+const COL_WIDTHS = [130, 160]; // 前两列最小宽度（像素）
+
+// 商品ID 等"标识符"类列：原样显示数字/字符串，不加千分符
+const ID_COLS = new Set(["商品ID"]);
+const isIdCol = (col) => ID_COLS.has(col);
 const frozenOffsets = computed(() => {
   const offsets = [];
   let acc = 0;
@@ -40,6 +42,12 @@ const fmt = (v) => {
     return v.toLocaleString("zh-CN", { maximumFractionDigits: 4 });
   }
   return v;
+};
+
+// 标识符类列：原样输出数字/字符串，不加千分符
+const fmtId = (v) => {
+  if (v === null || v === undefined || v === "") return "-";
+  return String(v);
 };
 
 // 百分比类列（值是小数，显示成 X.XX%）
@@ -106,6 +114,7 @@ const sumRow = computed(() => {
 
 function fmtCell(col, value) {
   if (value === null || value === undefined) return "-";
+  if (isIdCol(col)) return fmtId(value);
   return isPercentCol(col) ? fmtPercent(value) : fmt(value);
 }
 
@@ -143,7 +152,10 @@ onBeforeUnmount(() => {
           <th
             v-for="(col, ci) in columns"
             :key="col"
-            class="whitespace-nowrap px-3 py-2 text-left font-medium text-muted-foreground border-b border-border"
+            class="whitespace-nowrap text-left font-medium text-muted-foreground border-b border-border"
+            :class="
+              isIdCol(col) ? 'px-2 py-2 font-mono text-[13px]' : 'px-3 py-2'
+            "
             :style="
               ci < FROZEN_COL_COUNT
                 ? {
@@ -177,11 +189,14 @@ onBeforeUnmount(() => {
           <td
             v-for="(col, ci) in columns"
             :key="col"
-            class="whitespace-nowrap px-3 py-2 border-b border-border hover:bg-accent/40"
+            class="whitespace-nowrap border-b border-border hover:bg-accent/40"
             :class="
-              isNumericCol(col) || isPercentCol(col)
-                ? 'text-right tabular-nums'
-                : 'text-left'
+              isIdCol(col)
+                ? 'px-2 py-2 text-left font-mono text-[13px]'
+                : 'px-3 py-2 ' +
+                  (isNumericCol(col) || isPercentCol(col)
+                    ? 'text-right tabular-nums'
+                    : 'text-left')
             "
             :style="
               ci < FROZEN_COL_COUNT
