@@ -57,27 +57,13 @@ const chartTitle = computed(() => {
   return "销售与推广数据趋势";
 });
 
-// 第二张图：按商品ID × 7 个指标 展开为 series
-// 每个 series 命名为 "<商品ID>-<指标>"，缺天为 0（后端已保证）
-const productChartSeries = computed(() => {
+// 按商品ID 维度拆成多个 Chart：每个商品ID 一张折线图，每个图里这个商品的 7 个指标做 7 条线
+const productCharts = computed(() => {
   const list = props.data?.chartByProduct || [];
-  const flat = [];
-  for (const item of list) {
-    for (const s of item.series || []) {
-      flat.push({
-        name: `${item.productId}-${s.name}`,
-        data: s.data,
-        productId: item.productId,
-        metric: s.name,
-      });
-    }
-  }
-  return flat;
-});
-
-const productChartTitle = computed(() => {
-  const base = chartTitle.value || "销售与推广数据趋势";
-  return `${base} - 各商品ID 维度`;
+  return list.map((item) => ({
+    productId: item.productId,
+    series: (item.series || []).filter((s) => s.data && s.data.length),
+  }));
 });
 
 // 折线图节点被点击时，把日期传给上层
@@ -108,20 +94,22 @@ function onPointClick({ date }) {
       </CardContent>
     </Card>
 
-    <Card>
+    <Card v-if="productCharts.length">
       <CardHeader class="pb-2">
-        <CardTitle class="text-base">{{ productChartTitle }}</CardTitle>
+        <CardTitle class="text-base">{{ chartTitle }} - 各商品ID 维度</CardTitle>
       </CardHeader>
-      <CardContent class="px-2">
-        <LineChart
-          v-if="productChartSeries.length"
-          :dates="chartDates"
-          :series="productChartSeries"
-          height="520px"
-          @point-click="onPointClick"
-        />
-        <div v-else class="py-10 text-center text-sm text-muted-foreground">
-          暂无商品ID 维度趋势数据
+      <CardContent class="px-2 space-y-6">
+        <div v-for="p in productCharts" :key="p.productId">
+          <div class="px-1 pb-2 text-sm font-medium text-muted-foreground">
+            商品ID：{{ p.productId }}
+          </div>
+          <LineChart
+            v-if="p.series.length"
+            :dates="chartDates"
+            :series="p.series"
+            height="360px"
+            @point-click="onPointClick"
+          />
         </div>
       </CardContent>
     </Card>
