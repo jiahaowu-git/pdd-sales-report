@@ -192,7 +192,7 @@ onBeforeUnmount(() => {
             class="whitespace-nowrap border-b border-border hover:bg-accent/40"
             :class="
               isIdCol(col)
-                ? 'px-2 py-2 text-left font-mono text-[13px]'
+                ? 'px-2 py-2 text-left font-mono'
                 : 'px-3 py-2 ' +
                   (isNumericCol(col) || isPercentCol(col)
                     ? 'text-right tabular-nums'
