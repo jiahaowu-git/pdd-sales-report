@@ -1,0 +1,21 @@
+{
+  "name": "pdd-sales-report-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "拼多多销售报表 - 后端服务",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dayjs": "^1.11.13",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
