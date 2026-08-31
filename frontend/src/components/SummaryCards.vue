@@ -29,7 +29,6 @@ const items = computed(() => [
   { key: '推广ROI',          value: formatNumber(props.cards['推广ROI'], 2),   accent: true },
   { key: '退款率',           value: formatPercent(props.cards['退款率']),       accent: true, suffix: '' },
   { key: '仅退款率',         value: formatPercent(props.cards['仅退款率']),     accent: true, suffix: '' },
-  { key: '销售占比',         value: formatPercent(props.cards['销售占比']),     accent: true, suffix: '' },
 ]);
 </script>
 
