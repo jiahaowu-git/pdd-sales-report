@@ -54,7 +54,8 @@ function buildOption() {
       type: 'line',
       smooth: true,
       symbol: 'circle',
-      symbolSize: 6,
+      symbolSize: 10,
+      itemStyle: { borderWidth: 2, borderColor: '#fff' },
       data: s.data,
     })),
   };
