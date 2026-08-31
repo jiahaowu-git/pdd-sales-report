@@ -189,7 +189,7 @@ async function gotoDetailByDate({ date }) {
             <button
               type="button"
               class="mx-3 flex w-[calc(100%-1.5rem)] items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors"
-              :class="activeKey === 'dashboard' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/60'"
+              :class="activeKey === 'dashboard' ? 'bg-secondary text-secondary-foreground' : 'hover:bg-accent/60'"
               :disabled="!data"
               @click="selectDashboard"
             >
@@ -235,7 +235,7 @@ async function gotoDetailByDate({ date }) {
           </button>
           <button
             class="flex h-10 w-10 items-center justify-center rounded-md transition-colors"
-            :class="activeKey === 'dashboard' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'"
+            :class="activeKey === 'dashboard' ? 'bg-secondary text-secondary-foreground' : 'hover:bg-accent hover:text-accent-foreground'"
             :disabled="!data"
             title="数据汇总看板"
             @click="selectDashboard"
