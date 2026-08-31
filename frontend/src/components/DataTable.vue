@@ -136,7 +136,7 @@ onBeforeUnmount(() => {
           "
         />
       </colgroup>
-      <thead class="sticky top-0 z-20">
+      <thead>
         <tr>
           <th
             v-for="(col, ci) in columns"
@@ -145,17 +145,20 @@ onBeforeUnmount(() => {
             :style="
               ci < FROZEN_COL_COUNT
                 ? {
+                    position: 'sticky',
+                    top: 0,
                     left: frozenOffsets[ci] + 'px',
                     zIndex: 30,
-                    position: 'sticky',
-                    backgroundColor: 'var(--muted, #f1f5f9)',
+                    backgroundColor: '#f1f5f9',
                     boxShadow:
                       ci === FROZEN_COL_COUNT - 1 && hasScroll
                         ? '4px 0 6px -2px rgba(0,0,0,0.08)'
                         : 'none',
                   }
                 : {
-                    backgroundColor: 'var(--muted, #f1f5f9)',
+                    position: 'sticky',
+                    top: 0,
+                    backgroundColor: '#f1f5f9',
                   }
             "
           >
