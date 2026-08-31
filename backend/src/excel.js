@@ -100,19 +100,41 @@ function listFilesInRange(shopDirPath, startDate, endDate) {
   const end = dayjs(endDate);
   if (!start.isValid() || !end.isValid()) return [];
 
+  // 先扫描根目录每日文件，统计能覆盖查询区间的天数
+  const totalDays = end.diff(start, "day") + 1;
+  const dailyFound = new Set();
+  const dailyFileByDate = new Map(); // 'YYYY-MM-DD' -> { fullPath, fileName }
+  for (const name of fs.readdirSync(shopDirPath)) {
+    if (name.startsWith("~$")) continue;
+    const m = name.match(
+      /^(.+?)_商品推广与售后单透视汇总表_(\d{4}-\d{2}-\d{2})\.xlsx$/,
+    );
+    if (!m) continue;
+    const d = dayjs(m[2]);
+    if (!d.isValid()) continue;
+    if (d.isBefore(start, "day") || d.isAfter(end, "day")) continue;
+    dailyFileByDate.set(m[2], {
+      fileName: name,
+      fullPath: path.join(shopDirPath, name),
+    });
+    dailyFound.add(m[2]);
+  }
+
+  const dailyCoverage = dailyFound.size / totalDays;
+  // 阈值：每日文件覆盖了 ≥ 50% 的查询天数，就优先用每日文件；
+  // 缺失的天数再用区间表"补"。这样数据按天可见，曲线仍能展开。
+  const useDailyFirst = dailyCoverage >= 0.5;
+
   const result = [];
   const coveredDates = new Set();
 
-  // 1) 先找「日期范围/」子目录里的区间合并表
-  // 同一查询区间下可能存在多张区间表（如 08-01~10, 08-01~16, 08-01~26 ...）
-  // 按"区间天数"从大到小排序，先用最大区间覆盖，后面只取差集，避免重复汇总
+  // 收集区间合并表（始终准备，按需使用）
+  // 同区间下可能存在多张区间表，按"区间天数"从大到小排序，避免重叠重复汇总
   const rangeDir = path.join(shopDirPath, "日期范围");
+  const rangeFiles = [];
   if (fs.existsSync(rangeDir)) {
-    const rangeFiles = [];
     for (const name of fs.readdirSync(rangeDir)) {
-      // 跳过 Excel 临时锁文件（~$xxx.xlsx）
       if (name.startsWith("~$")) continue;
-      // 例：物空旗舰店_商品推广与售后单透视汇总表_2026-08-01_2026-08-26.xlsx
       const m = name.match(
         /^(.+?)_商品推广与售后单透视汇总表_(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})\.xlsx$/,
       );
@@ -130,17 +152,16 @@ function listFilesInRange(shopDirPath, startDate, endDate) {
         fullPath: path.join(rangeDir, name),
       });
     }
-    // 区间越长越优先
     rangeFiles.sort((a, b) => b.span - a.span);
+  }
 
+  function pushRangeSegments() {
     for (const f of rangeFiles) {
-      // 与查询区间求交集
       const overlapStart = f.startObj.isAfter(start, "day")
         ? f.startObj
         : start;
       const overlapEnd = f.endObj.isBefore(end, "day") ? f.endObj : end;
       if (overlapStart.isAfter(overlapEnd, "day")) continue;
-      // 跳过已被更大区间表覆盖的子区间
       const freeSegments = splitOutCovered(
         overlapStart,
         overlapEnd,
@@ -158,7 +179,6 @@ function listFilesInRange(shopDirPath, startDate, endDate) {
           fullPath: f.fullPath,
           source: "range",
         });
-        // 标记该区间表实际贡献覆盖的天数
         let cur = seg.start.clone();
         while (!cur.isAfter(seg.end, "day")) {
           coveredDates.add(cur.format("YYYY-MM-DD"));
@@ -168,26 +188,23 @@ function listFilesInRange(shopDirPath, startDate, endDate) {
     }
   }
 
-  // 2) 再扫根目录的每日文件，仅保留未被区间表覆盖的天数
-  for (const name of fs.readdirSync(shopDirPath)) {
-    // 跳过 Excel 临时锁文件（~$xxx.xlsx）
-    if (name.startsWith("~$")) continue;
-    // 例：物空旗舰店_商品推广与售后单透视汇总表_2026-08-01.xlsx
-    const m = name.match(
-      /^(.+?)_商品推广与售后单透视汇总表_(\d{4}-\d{2}-\d{2})\.xlsx$/,
-    );
-    if (!m) continue;
-    const fileDate = dayjs(m[2]);
-    if (!fileDate.isValid()) continue;
-    if (fileDate.isBefore(start, "day") || fileDate.isAfter(end, "day"))
-      continue;
-    if (coveredDates.has(m[2])) continue;
-    result.push({
-      date: m[2],
-      fileName: name,
-      fullPath: path.join(shopDirPath, name),
-      source: "daily",
-    });
+  if (useDailyFirst) {
+    // 1) 优先用每日文件
+    for (const dStr of Array.from(dailyFound).sort()) {
+      const f = dailyFileByDate.get(dStr);
+      result.push({
+        date: dStr,
+        fileName: f.fileName,
+        fullPath: f.fullPath,
+        source: "daily",
+      });
+      coveredDates.add(dStr);
+    }
+    // 2) 再用区间表补缺失天数（按最大区间优先，差集填充）
+    pushRangeSegments();
+  } else {
+    // 每日文件基本缺失，直接走区间表聚合（折线会退化为区间点）
+    pushRangeSegments();
   }
 
   // 按日期排序
