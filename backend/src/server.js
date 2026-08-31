@@ -77,8 +77,11 @@ app.get("/api/dashboard", async (req, res, next) => {
 
     // 按日期顺序汇总
     const dailyMap = new Map(); // date -> { 列名 -> 数值 }
+    // 按商品ID 汇总：{ 商品ID: { 日期: { 列名: 数值 } } }
+    const productMap = new Map();
+    const allProductIds = new Set();
     for (const f of files) {
-      const { summary } = await readSummaryWorkbook(f.fullPath, {
+      const { summary, byProduct } = await readSummaryWorkbook(f.fullPath, {
         fileDate: f.source === "daily" ? f.date : null,
         fileDateRange: f.source === "range" ? f.dateRange : null,
       });
@@ -90,6 +93,28 @@ app.get("/api/dashboard", async (req, res, next) => {
           );
         const acc = dailyMap.get(date);
         for (const c of SUMMARY_COLUMNS) acc[c] += Number(cols[c] || 0);
+      }
+      // 累加商品ID 维度数据
+      for (const [date, prodCols] of Object.entries(byProduct || {})) {
+        for (const [pid, cols] of Object.entries(prodCols)) {
+          allProductIds.add(pid);
+          if (!productMap.has(pid)) {
+            productMap.set(
+              pid,
+              new Map(), // date -> { 列名 -> 数值 }
+            );
+          }
+          const prodAcc = productMap.get(pid);
+          if (!prodAcc.has(date)) {
+            prodAcc.set(
+              date,
+              Object.fromEntries(SUMMARY_COLUMNS.map((c) => [c, 0])),
+            );
+          }
+          const accDay = prodAcc.get(date);
+          for (const c of SUMMARY_COLUMNS)
+            accDay[c] += Number(cols[c] || 0);
+        }
       }
     }
 
@@ -175,6 +200,28 @@ app.get("/api/dashboard", async (req, res, next) => {
       }),
     });
 
+    // 按商品ID × 指标 的折线图数据
+    // 顺序：每个商品ID × SUMMARY_COLUMNS，扩展后的派生指标名（店铺净销售/推广净销售）
+    const PRODUCT_CHART_COLS = [...SUMMARY_COLUMNS, "店铺净销售", "推广净销售"];
+    const chartByProduct = Array.from(allProductIds).sort().map((pid) => {
+      const prodAcc = productMap.get(pid) || new Map();
+      // 派生列
+      const series = [];
+      for (const col of PRODUCT_CHART_COLS) {
+        const data = dates.map((d) => {
+          const a = prodAcc.get(d);
+          if (!a) return 0;
+          if (col === "店铺净销售")
+            return Number((a["店铺成交金额"] - a["总退款金额"]).toFixed(2));
+          if (col === "推广净销售")
+            return Number((a["推广交易额"] - a["总退款金额"]).toFixed(2));
+          return Number((a[col] || 0).toFixed(2));
+        });
+        series.push({ name: col, data });
+      }
+      return { productId: pid, series };
+    });
+
     const menu = files.map((f) => ({
       date: f.date,
       fileName: f.fileName,
@@ -189,6 +236,7 @@ app.get("/api/dashboard", async (req, res, next) => {
         endDate,
         summaryCards,
         chart: { dates, series: chartSeries },
+        chartByProduct,
         menu,
       },
     });

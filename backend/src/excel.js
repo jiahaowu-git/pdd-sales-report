@@ -6,14 +6,18 @@ const dayjs = require("dayjs");
 const { SUMMARY_COLUMNS, DATE_COLUMN } = require("./config");
 
 /**
- * 解析单个汇总表 xlsx -> { rows, columns, summary }
- * rows    : 明细行数组（对象数组，键为列名）
- * columns : 表格列名数组（保持原始顺序）
- * summary : 各汇总列按日期聚合后的 { 'YYYY-MM-DD': {列名: 数值} }
+ * 解析单个汇总表 xlsx -> { rows, columns, summary, byProduct }
+ * rows      : 明细行数组（对象数组，键为列名）
+ * columns   : 表格列名数组（保持原始顺序）
+ * summary   : 各汇总列按日期聚合后的 { 'YYYY-MM-DD': {列名: 数值} }
+ * byProduct : 各商品ID 按日期聚合后的 { 'YYYY-MM-DD': { 商品ID: {列名: 数值} } }
  *
  * 每日文件没有"日期列"，日期由调用方通过 fileDate / fileDateRange 从文件名传入；
  * 区间表虽然有日期列，但首列内容是 "YYYY-MM-DD 至 YYYY-MM-DD" 这种字符串
  * 无法被 dayjs 解析，故也以文件名日期为准。
+ *
+ * NOTE: 明细表的"日期列"实际是字符串 "2026-08-01 至 2026-08-26"，无法 dayjs 解析，
+ * 所以 byProduct 也以 fileDate 为准（区间表里所有商品都归属于 fileDate）。
  */
 async function readSummaryWorkbook(filePath, options = {}) {
   const { fileDate, fileDateRange } = options;
@@ -33,6 +37,8 @@ async function readSummaryWorkbook(filePath, options = {}) {
 
   const rows = [];
   const summary = {};
+  // byProduct: { 'YYYY-MM-DD': { 商品ID: {列名: 数值} } }
+  const byProduct = {};
 
   sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
     if (rowNumber === 1) return;
@@ -59,11 +65,27 @@ async function readSummaryWorkbook(filePath, options = {}) {
         const n = Number(obj[c]);
         if (!Number.isNaN(n)) summary[k][c] += n;
       });
+
+      // 按商品ID 维度聚合：每日每个商品ID 的 SUMMARY_COLUMNS 累加
+      const productId = obj["商品ID"];
+      if (productId !== null && productId !== undefined && String(productId).trim() !== "") {
+        const pid = String(productId).trim();
+        if (!byProduct[k]) byProduct[k] = {};
+        if (!byProduct[k][pid]) {
+          byProduct[k][pid] = Object.fromEntries(
+            SUMMARY_COLUMNS.map((c) => [c, 0]),
+          );
+        }
+        SUMMARY_COLUMNS.forEach((c) => {
+          const n = Number(obj[c]);
+          if (!Number.isNaN(n)) byProduct[k][pid][c] += n;
+        });
+      }
     }
     rows.push(obj);
   });
 
-  return { rows, columns, summary };
+  return { rows, columns, summary, byProduct };
 }
 
 /** 把单元格原始值转为字符串 / 数字 / 标准日期 YYYY-MM-DD */

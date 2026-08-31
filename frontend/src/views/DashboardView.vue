@@ -5,7 +5,7 @@ import SummaryCards from "@/components/SummaryCards.vue";
 import LineChart from "@/components/LineChart.vue";
 
 const props = defineProps({
-  data: { type: Object, required: true }, // { summaryCards, chart, ... }
+  data: { type: Object, required: true }, // { summaryCards, chart, chartByProduct, ... }
   shopName: { type: String, default: "" },
   startDate: { type: String, default: "" },
   endDate: { type: String, default: "" },
@@ -57,6 +57,29 @@ const chartTitle = computed(() => {
   return "销售与推广数据趋势";
 });
 
+// 第二张图：按商品ID × 7 个指标 展开为 series
+// 每个 series 命名为 "<商品ID>-<指标>"，缺天为 0（后端已保证）
+const productChartSeries = computed(() => {
+  const list = props.data?.chartByProduct || [];
+  const flat = [];
+  for (const item of list) {
+    for (const s of item.series || []) {
+      flat.push({
+        name: `${item.productId}-${s.name}`,
+        data: s.data,
+        productId: item.productId,
+        metric: s.name,
+      });
+    }
+  }
+  return flat;
+});
+
+const productChartTitle = computed(() => {
+  const base = chartTitle.value || "销售与推广数据趋势";
+  return `${base} - 各商品ID 维度`;
+});
+
 // 折线图节点被点击时，把日期传给上层
 function onPointClick({ date }) {
   emit("goto-detail", { date });
@@ -81,6 +104,24 @@ function onPointClick({ date }) {
         />
         <div v-else class="py-10 text-center text-sm text-muted-foreground">
           暂无趋势数据
+        </div>
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader class="pb-2">
+        <CardTitle class="text-base">{{ productChartTitle }}</CardTitle>
+      </CardHeader>
+      <CardContent class="px-2">
+        <LineChart
+          v-if="productChartSeries.length"
+          :dates="chartDates"
+          :series="productChartSeries"
+          height="520px"
+          @point-click="onPointClick"
+        />
+        <div v-else class="py-10 text-center text-sm text-muted-foreground">
+          暂无商品ID 维度趋势数据
         </div>
       </CardContent>
     </Card>
