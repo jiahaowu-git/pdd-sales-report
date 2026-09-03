@@ -104,9 +104,12 @@ function buildOption() {
       textStyle: { color: "#0f172a", fontSize: 12 },
       extraCssText: "box-shadow: 0 4px 12px rgba(15,23,42,0.08); border-radius: 6px;",
       // tooltip 中百分数系列带 % 后缀；其它（金额/ROI）走默认
+      // 同时显示与上一日 diff（绿色▲ / 红色▼），让用户一眼看出趋势
       formatter: (params) => {
         if (!Array.isArray(params) || !params.length) return "";
         const axisLabel = params[0].axisValueLabel ?? params[0].name;
+        const idx = params[0].dataIndex;
+        const prevIdx = idx - 1;
         const lines = params.map((p) => {
           const v =
             p.value === null || p.value === undefined ? "-" : Number(p.value);
@@ -117,7 +120,34 @@ function buildOption() {
             : v.toLocaleString("zh-CN", {
                 maximumFractionDigits: 2,
               });
-          return `${p.marker}${p.seriesName}: <b>${text}</b>`;
+          // diff：与上一日对比
+          let diffText = "";
+          if (prevIdx >= 0) {
+            const prevArr = p.seriesData?.map?.((x) => x) || [];
+            // ECharts 把同 series 的所有点放在 series.data，我们从前一个 series 同 dataIndex 拿
+            const seriesArr = props.series.find((s) => s.name === p.seriesName)
+              ?.data;
+            const prev = seriesArr && seriesArr[prevIdx];
+            if (
+              prev !== null &&
+              prev !== undefined &&
+              Number.isFinite(Number(prev)) &&
+              Number.isFinite(v)
+            ) {
+              const d = v - Number(prev);
+              if (Math.abs(d) > 1e-9) {
+                const arrow = d > 0 ? "▲" : "▼";
+                const color = d > 0 ? "#16a34a" : "#dc2626"; // green-600 / red-600
+                const diffStr = isPct
+                  ? `${Math.abs(d).toFixed(2)}%`
+                  : Math.abs(d).toLocaleString("zh-CN", {
+                      maximumFractionDigits: 2,
+                    });
+                diffText = ` <span style="color:${color};font-size:11px;">${arrow} ${diffStr}</span>`;
+              }
+            }
+          }
+          return `${p.marker}${p.seriesName}: <b>${text}</b>${diffText}`;
         });
         return `${axisLabel}<br/>${lines.join("<br/>")}`;
       },
