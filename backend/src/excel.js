@@ -4,6 +4,8 @@ const path = require("path");
 const ExcelJS = require("exceljs");
 const dayjs = require("dayjs");
 const { SUMMARY_COLUMNS, DATE_COLUMN } = require("./config");
+// 商品图百分数列：从明细里读取的 0~1 小数列，需在 byProduct 中保留并在 server.js 转百分数
+const PRODUCT_PERCENT_COLS = ["退货率", "仅退款率", "销售占比"];
 
 /**
  * 解析单个汇总表 xlsx -> { rows, columns, summary, byProduct }
@@ -39,6 +41,8 @@ async function readSummaryWorkbook(filePath, options = {}) {
   const summary = {};
   // byProduct: { 'YYYY-MM-DD': { 商品ID: {列名: 数值} } }
   const byProduct = {};
+  // productNameByDate: { 'YYYY-MM-DD': { 商品ID: 推广名称 } }
+  const productNameByDate = {};
 
   sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
     if (rowNumber === 1) return;
@@ -68,7 +72,11 @@ async function readSummaryWorkbook(filePath, options = {}) {
 
       // 按商品ID 维度聚合：每日每个商品ID 的 SUMMARY_COLUMNS 累加
       const productId = obj["商品ID"];
-      if (productId !== null && productId !== undefined && String(productId).trim() !== "") {
+      if (
+        productId !== null &&
+        productId !== undefined &&
+        String(productId).trim() !== ""
+      ) {
         const pid = String(productId).trim();
         if (!byProduct[k]) byProduct[k] = {};
         if (!byProduct[k][pid]) {
@@ -80,12 +88,33 @@ async function readSummaryWorkbook(filePath, options = {}) {
           const n = Number(obj[c]);
           if (!Number.isNaN(n)) byProduct[k][pid][c] += n;
         });
+        // 商品图使用的百分数列：原值为 0~1 小数，直接覆盖（明细同商品同日期只有一行）
+        PRODUCT_PERCENT_COLS.forEach((c) => {
+          if (obj[c] !== undefined && obj[c] !== null && obj[c] !== "")
+            byProduct[k][pid][c] = Number(obj[c]) || 0;
+        });
+      }
+
+      // 推广名称按日期 × 商品ID 记录（同一商品在不同日期可能换推广名称）
+      const promotionName = obj["推广名称"];
+      if (
+        productId !== null &&
+        productId !== undefined &&
+        String(productId).trim() !== "" &&
+        promotionName !== null &&
+        promotionName !== undefined &&
+        String(promotionName).trim() !== ""
+      ) {
+        const pid = String(productId).trim();
+        const pname = String(promotionName).trim();
+        if (!productNameByDate[k]) productNameByDate[k] = {};
+        productNameByDate[k][pid] = pname;
       }
     }
     rows.push(obj);
   });
 
-  return { rows, columns, summary, byProduct };
+  return { rows, columns, summary, byProduct, productNameByDate };
 }
 
 /** 把单元格原始值转为字符串 / 数字 / 标准日期 YYYY-MM-DD */

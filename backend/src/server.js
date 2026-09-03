@@ -79,12 +79,15 @@ app.get("/api/dashboard", async (req, res, next) => {
     const dailyMap = new Map(); // date -> { 列名 -> 数值 }
     // 按商品ID 汇总：{ 商品ID: { 日期: { 列名: 数值 } } }
     const productMap = new Map();
+    // 按商品ID × 日期 的推广名称：{ 商品ID: { 日期: 推广名称 } }
+    const productNameMap = new Map();
     const allProductIds = new Set();
     for (const f of files) {
-      const { summary, byProduct } = await readSummaryWorkbook(f.fullPath, {
-        fileDate: f.source === "daily" ? f.date : null,
-        fileDateRange: f.source === "range" ? f.dateRange : null,
-      });
+      const { summary, byProduct, productNameByDate } =
+        await readSummaryWorkbook(f.fullPath, {
+          fileDate: f.source === "daily" ? f.date : null,
+          fileDateRange: f.source === "range" ? f.dateRange : null,
+        });
       for (const [date, cols] of Object.entries(summary)) {
         if (!dailyMap.has(date))
           dailyMap.set(
@@ -110,10 +113,25 @@ app.get("/api/dashboard", async (req, res, next) => {
               date,
               Object.fromEntries(SUMMARY_COLUMNS.map((c) => [c, 0])),
             );
+            // 预置商品图百分数列默认值（excel.js 解析时会覆盖）
+            ["退货率", "仅退款率", "销售占比"].forEach((c) => {
+              prodAcc.get(date)[c] = 0;
+            });
           }
           const accDay = prodAcc.get(date);
-          for (const c of SUMMARY_COLUMNS)
-            accDay[c] += Number(cols[c] || 0);
+          for (const c of SUMMARY_COLUMNS) accDay[c] += Number(cols[c] || 0);
+          // 商品图百分数列：原值为 0~1 小数（同一商品同一日期每日文件只有一行，直接覆盖）
+          for (const c of ["退货率", "仅退款率", "销售占比"]) {
+            if (cols[c] !== undefined && cols[c] !== null && cols[c] !== "")
+              accDay[c] = Number(cols[c]) || 0;
+          }
+        }
+      }
+      // 累加推广名称（同商品同日期用最新读到的；后读到的覆盖先读到的，区间表通常在最末所以生效）
+      for (const [date, prodNames] of Object.entries(productNameByDate || {})) {
+        for (const [pid, pname] of Object.entries(prodNames)) {
+          if (!productNameMap.has(pid)) productNameMap.set(pid, new Map());
+          productNameMap.get(pid).set(date, pname);
         }
       }
     }
@@ -199,28 +217,96 @@ app.get("/api/dashboard", async (req, res, next) => {
         return Number((a["推广交易额"] - a["总退款金额"]).toFixed(2));
       }),
     });
+    // 店铺 ROI / 推广 ROI 每日序列（数值小，挂右侧 Y 轴）
+    chartSeries.push({
+      name: "店铺ROI",
+      data: dates.map((d) => {
+        const a = dailyMap.get(d);
+        const spend = a["成交花费"] || 0;
+        if (!spend) return 0;
+        return Number(
+          ((a["店铺成交金额"] - a["总退款金额"]) / spend).toFixed(2),
+        );
+      }),
+    });
+    chartSeries.push({
+      name: "推广ROI",
+      data: dates.map((d) => {
+        const a = dailyMap.get(d);
+        const spend = a["成交花费"] || 0;
+        if (!spend) return 0;
+        return Number(((a["推广交易额"] - a["总退款金额"]) / spend).toFixed(2));
+      }),
+    });
 
     // 按商品ID × 指标 的折线图数据
-    // 顺序：每个商品ID × SUMMARY_COLUMNS，扩展后的派生指标名（店铺净销售/推广净销售）
-    const PRODUCT_CHART_COLS = [...SUMMARY_COLUMNS, "店铺净销售", "推广净销售"];
-    const chartByProduct = Array.from(allProductIds).sort().map((pid) => {
-      const prodAcc = productMap.get(pid) || new Map();
-      // 派生列
-      const series = [];
-      for (const col of PRODUCT_CHART_COLS) {
-        const data = dates.map((d) => {
-          const a = prodAcc.get(d);
-          if (!a) return 0;
-          if (col === "店铺净销售")
-            return Number((a["店铺成交金额"] - a["总退款金额"]).toFixed(2));
-          if (col === "推广净销售")
-            return Number((a["推广交易额"] - a["总退款金额"]).toFixed(2));
-          return Number((a[col] || 0).toFixed(2));
-        });
-        series.push({ name: col, data });
+    // 商品图只保留两类系列：
+    //  - 左 Y 轴：店铺ROI / 推广ROI（数值小）
+    //  - 右 Y 轴：退款率 / 仅退款率 / 销售占比（百分数 0~100%）
+    // 注：明细 Excel 列名为 "退货率"（不是 "退款率"）；原值是 0~1 小数，需 *100 转为百分数
+    const PRODUCT_CHART_COLS = [
+      "店铺ROI",
+      "推广ROI",
+      "退款率", // 实际对应明细里的 "退货率"
+      "仅退款率",
+      "销售占比",
+    ];
+    const PERCENT_COLS = new Set(["退款率", "仅退款率", "销售占比"]);
+    const chartByProduct = Array.from(allProductIds)
+      .sort()
+      .map((pid) => {
+        const prodAcc = productMap.get(pid) || new Map();
+        // 派生列
+        const series = [];
+        for (const col of PRODUCT_CHART_COLS) {
+          const data = dates.map((d) => {
+            const a = prodAcc.get(d);
+            if (!a) return 0;
+            const spend = a["成交花费"] || 0;
+            if (col === "店铺ROI")
+              return spend
+                ? Number(
+                    ((a["店铺成交金额"] - a["总退款金额"]) / spend).toFixed(2),
+                  )
+                : 0;
+            if (col === "推广ROI")
+              return spend
+                ? Number(
+                    ((a["推广交易额"] - a["总退款金额"]) / spend).toFixed(2),
+                  )
+                : 0;
+            if (PERCENT_COLS.has(col)) {
+              // 明细里百分数列以小数存储（0.3064 表示 30.64%），统一 ×100
+              const raw = col === "退款率" ? a["退货率"] || 0 : a[col] || 0;
+              return Number((raw * 100).toFixed(2));
+            }
+            return Number((a[col] || 0).toFixed(2));
+          });
+          series.push({ name: col, data });
+        }
+        return { productId: pid, series };
+      });
+
+    // 给每个商品 ID 补上"最近日期的推广名称"——按 dates 倒序查找第一个有名称的
+    const promotionNameByProduct = {};
+    for (const pid of allProductIds) {
+      const nameMap = productNameMap.get(pid);
+      let latestName = "";
+      if (nameMap) {
+        // dates 已是升序；倒序找第一个非空的
+        for (let i = dates.length - 1; i >= 0; i--) {
+          const v = nameMap.get(dates[i]);
+          if (v) {
+            latestName = v;
+            break;
+          }
+        }
       }
-      return { productId: pid, series };
-    });
+      promotionNameByProduct[pid] = latestName;
+    }
+    for (const item of chartByProduct) {
+      item.promotionName = promotionNameByProduct[item.productId] || "";
+    }
 
     const menu = files.map((f) => ({
       date: f.date,
