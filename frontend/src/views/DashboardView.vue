@@ -61,31 +61,11 @@ const chartTitle = computed(() => {
 // 按商品ID 维度拆成多个 Chart：每个商品ID 一张折线图，每个图里这个商品的 7 个指标做 7 条线
 const productCharts = computed(() => {
   const list = props.data?.chartByProduct || [];
-  return list.map((item) => {
-    const series = (item.series || []).filter((s) => s.data && s.data.length);
-    // KPI 摘要：取该商品所有 series 的最后一个非零值（最近一日数据）
-    const lastOf = (name) => {
-      const s = series.find((x) => x.name === name);
-      if (!s) return null;
-      for (let i = s.data.length - 1; i >= 0; i--) {
-        const v = Number(s.data[i]);
-        if (Number.isFinite(v) && v !== 0) return v;
-      }
-      return null;
-    };
-    const kpi = {
-      shopRoi: lastOf("店铺ROI"),
-      promotionRoi: lastOf("推广ROI"),
-      refundRate: lastOf("退款率"),
-      saleShare: lastOf("销售占比"),
-    };
-    return {
-      productId: item.productId,
-      promotionName: item.promotionName || "",
-      series,
-      kpi,
-    };
-  });
+  return list.map((item) => ({
+    productId: item.productId,
+    promotionName: item.promotionName || "",
+    series: (item.series || []).filter((s) => s.data && s.data.length),
+  }));
 });
 
 // 每个商品图表的展开/折叠状态（默认全部展开）
@@ -197,69 +177,6 @@ function onPointClick({ date }) {
                 <path d="m6 9 6 6 6-6" />
               </svg>
             </button>
-          </div>
-          <!-- KPI 摘要条：最近一日的 4 个关键指标，hover 提示含义 -->
-          <div
-            class="grid grid-cols-2 gap-2 sm:grid-cols-4 mb-3 px-1"
-            v-if="p.kpi && isExpanded(p.productId)"
-          >
-            <div
-              class="rounded-md border border-border bg-card px-3 py-2"
-              :title="'最近一日店铺 ROI = 店铺成交金额÷成交花费'"
-            >
-              <div class="text-[11px] text-muted-foreground">店铺 ROI</div>
-              <div class="text-base font-semibold text-violet-700 tabular-nums">
-                {{ p.kpi.shopRoi == null ? "-" : p.kpi.shopRoi.toFixed(2) }}
-              </div>
-            </div>
-            <div
-              class="rounded-md border border-border bg-card px-3 py-2"
-              :title="'最近一日推广 ROI = 推广交易额÷成交花费'"
-            >
-              <div class="text-[11px] text-muted-foreground">推广 ROI</div>
-              <div class="text-base font-semibold text-violet-700 tabular-nums">
-                {{
-                  p.kpi.promotionRoi == null
-                    ? "-"
-                    : p.kpi.promotionRoi.toFixed(2)
-                }}
-              </div>
-            </div>
-            <div
-              class="rounded-md border border-border bg-card px-3 py-2"
-              :title="'最近一日退款率（退货率 ×100）'"
-            >
-              <div class="text-[11px] text-muted-foreground">退款率</div>
-              <div
-                class="text-base font-semibold tabular-nums"
-                :class="
-                  p.kpi.refundRate != null && p.kpi.refundRate > 10
-                    ? 'text-red-600'
-                    : 'text-amber-600'
-                "
-              >
-                {{
-                  p.kpi.refundRate == null
-                    ? "-"
-                    : p.kpi.refundRate.toFixed(2) + "%"
-                }}
-              </div>
-            </div>
-            <div
-              class="rounded-md border border-border bg-card px-3 py-2"
-              :title="'最近一日销售占比'"
-            >
-              <div class="text-[11px] text-muted-foreground">销售占比</div>
-              <div
-                class="text-base font-semibold text-emerald-700 tabular-nums"
-              >
-                {{
-                  p.kpi.saleShare == null
-                    ? "-"
-                    : p.kpi.saleShare.toFixed(2) + "%"
-                }}
-              </div>
-            </div>
           </div>
           <LineChart
             v-if="p.series.length && isExpanded(p.productId)"
