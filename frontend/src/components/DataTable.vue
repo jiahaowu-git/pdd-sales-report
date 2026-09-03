@@ -20,8 +20,9 @@ function updateScrollState() {
 const FROZEN_COL_COUNT = 2;
 
 // 计算固定列宽度（用于 sticky left 偏移量）
-// 第一列是 ID 类文本（等宽紧凑），第二列是较长的字符串（如"净目标投产比: 3.49"）
-const COL_WIDTHS = [130, 160]; // 前两列最小宽度（像素）
+// 第一列是 ID 类文本（等宽紧凑），第二列"推广名称"较长，固定 200px
+// 配合 truncate + title 实现省略号 + 鼠标悬停显示全文
+const COL_WIDTHS = [130, 200]; // 前两列最小宽度（像素）
 
 // 商品ID 等"标识符"类列：原样显示数字/字符串，不加千分符
 const ID_COLS = new Set(["商品ID"]);
@@ -78,10 +79,10 @@ const isNumericCol = (col) => {
 const SUM_COLS = new Set([
   "店铺成交金额",
   "推广交易额",
-  "推广成交花费",
+  "成交花费",
   "总退款金额",
   "未发货退款金额",
-  "店铺净销售",
+  "店铺净销售额",
   "推广净销售",
 ]);
 const RATIO_COLS = new Set(["店铺ROI", "推广ROI"]);
@@ -96,8 +97,8 @@ const sumRow = computed(() => {
     }
     result[col] = total;
   }
-  // 店铺 ROI = 店铺成交金额合计 / 推广成交花费合计
-  const tuiguangSpend = result["推广成交花费"];
+  // 店铺 ROI = 店铺成交金额合计 / 成交花费合计
+  const tuiguangSpend = result["成交花费"];
   if (tuiguangSpend > 0) {
     result["店铺ROI"] = Number(
       (result["店铺成交金额"] / tuiguangSpend).toFixed(4),
@@ -142,7 +143,7 @@ onBeforeUnmount(() => {
           :key="col"
           :style="
             idx < FROZEN_COL_COUNT
-              ? { minWidth: COL_WIDTHS[idx] + 'px' }
+              ? { width: COL_WIDTHS[idx] + 'px' }
               : undefined
           "
         />
@@ -153,9 +154,17 @@ onBeforeUnmount(() => {
             v-for="(col, ci) in columns"
             :key="col"
             class="whitespace-nowrap text-left font-medium text-muted-foreground border-b border-border"
-            :class="
-              isIdCol(col) ? 'px-2 py-2 font-mono text-[13px]' : 'px-3 py-2'
-            "
+            :class="[
+              isIdCol(col) || ci === 1
+                ? 'px-2 py-2 font-mono text-[13px]'
+                : 'px-3 py-2',
+              // 冻结列与非 ID/数字列都加 truncate，长表头也能省略号 + title
+              ci < FROZEN_COL_COUNT ||
+              (!isIdCol(col) && !isNumericCol(col) && !isPercentCol(col))
+                ? 'truncate'
+                : '',
+            ]"
+            :title="col"
             :style="
               ci < FROZEN_COL_COUNT
                 ? {
@@ -164,6 +173,10 @@ onBeforeUnmount(() => {
                     left: frozenOffsets[ci] + 'px',
                     zIndex: 30,
                     backgroundColor: '#f1f5f9',
+                    borderRight:
+                      ci === FROZEN_COL_COUNT - 1
+                        ? '1px solid #e2e8f0'
+                        : 'none',
                     boxShadow:
                       ci === FROZEN_COL_COUNT - 1 && hasScroll
                         ? '4px 0 6px -2px rgba(0,0,0,0.08)'
@@ -190,19 +203,32 @@ onBeforeUnmount(() => {
             v-for="(col, ci) in columns"
             :key="col"
             class="whitespace-nowrap border-b border-border hover:bg-accent/40"
-            :class="
-              isIdCol(col)
+            :class="[
+              isIdCol(col) || ci === 1
                 ? 'px-2 py-2 text-left font-mono'
                 : 'px-3 py-2 ' +
                   (isNumericCol(col) || isPercentCol(col)
                     ? 'text-right tabular-nums'
-                    : 'text-left')
+                    : 'text-left'),
+              // 冻结列 / 长文本列：截断 + 鼠标移上去显示全文
+              ci < FROZEN_COL_COUNT ||
+              (!isIdCol(col) && !isNumericCol(col) && !isPercentCol(col))
+                ? 'truncate'
+                : '',
+            ]"
+            :title="
+              row[col] === null || row[col] === undefined
+                ? ''
+                : String(row[col])
             "
             :style="
               ci < FROZEN_COL_COUNT
                 ? {
                     position: 'sticky',
                     left: frozenOffsets[ci] + 'px',
+                    width: COL_WIDTHS[ci] + 'px',
+                    minWidth: COL_WIDTHS[ci] + 'px',
+                    maxWidth: COL_WIDTHS[ci] + 'px',
                     // 固定列背景：直接写不透明色，不依赖 tr 透色
                     backgroundColor: i % 2 === 1 ? '#f1f5f9' : '#ffffff',
                     zIndex: 2,
@@ -233,10 +259,19 @@ onBeforeUnmount(() => {
             v-for="(col, ci) in columns"
             :key="col"
             class="whitespace-nowrap px-3 py-2"
-            :class="
+            :class="[
               isNumericCol(col) || isPercentCol(col)
                 ? 'text-right tabular-nums'
-                : 'text-left'
+                : 'text-left',
+              ci < FROZEN_COL_COUNT ||
+              (!isIdCol(col) && !isNumericCol(col) && !isPercentCol(col))
+                ? 'truncate'
+                : '',
+            ]"
+            :title="
+              SUM_COLS.has(col) || RATIO_COLS.has(col)
+                ? String(sumRow[col] ?? '')
+                : ''
             "
             :style="
               ci < FROZEN_COL_COUNT
