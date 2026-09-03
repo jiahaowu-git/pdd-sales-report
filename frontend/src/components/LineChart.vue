@@ -48,6 +48,23 @@ const LEFT_AXIS_NAMES = new Set(["店铺ROI", "推广ROI"]);
 // 右 Y 轴：百分数系列（0~100%）
 const RIGHT_AXIS_NAMES = new Set(["退款率", "仅退款率", "销售占比"]);
 
+// === 配色与线型（按 AGENTS.md §1 / §7：自定义调色板 + 双轴对比色 + 线型区分） ===
+// 三类语义：金额（冷蓝/青绿）、百分数（暖橙/玫红）、ROI（深紫/深蓝）
+// 同一类内的相邻系列走同一色相但不同明度，避免视觉混淆
+const COLOR_PALETTE = [
+  "#2563eb", // blue-600    金额主色
+  "#0891b2", // cyan-600    金额辅色
+  "#0d9488", // teal-600    净销售类
+  "#f59e0b", // amber-500   退款类
+  "#ef4444", // red-500     未发货退款
+  "#db2777", // pink-600    百分数
+  "#7c3aed", // violet-600  ROI 主
+  "#1d4ed8", // blue-700    ROI 辅
+];
+// 左 Y 轴文字/网格用深灰，右 Y 轴用对应主色，让"哪条线对应哪条轴"一眼可辨
+const LEFT_AXIS_COLOR = "#475569"; // slate-600
+const RIGHT_AXIS_COLOR = "#7c3aed"; // violet-600（与 ROI 系列同色系，右轴突出）
+
 function buildOption() {
   // 是否启用双 Y 轴：
   //  - 店铺总图：左=金额、右=ROI
@@ -64,7 +81,9 @@ function buildOption() {
       type: "scroll",
       top: 0,
       left: "center",
-      data: props.series.map((s) => ({
+      textStyle: { color: "#334155", fontSize: 12 },
+      itemGap: 16,
+      data: props.series.map((s, idx) => ({
         name: s.name,
         icon:
           LEFT_AXIS_NAMES.has(s.name) || RIGHT_AXIS_NAMES.has(s.name)
@@ -79,6 +98,11 @@ function buildOption() {
     backgroundColor: props.showBg ? "#f8fafc" : "transparent",
     tooltip: {
       trigger: "axis",
+      backgroundColor: "rgba(255,255,255,0.98)",
+      borderColor: "#cbd5e1",
+      borderWidth: 1,
+      textStyle: { color: "#0f172a", fontSize: 12 },
+      extraCssText: "box-shadow: 0 4px 12px rgba(15,23,42,0.08); border-radius: 6px;",
       // tooltip 中百分数系列带 % 后缀；其它（金额/ROI）走默认
       formatter: (params) => {
         if (!Array.isArray(params) || !params.length) return "";
@@ -127,11 +151,14 @@ function buildOption() {
             type: "value",
             min: 0,
             axisLabel: {
-              color: "#64748b",
+              color: LEFT_AXIS_COLOR,
+              fontWeight: 500,
               formatter: props.rightAxisPercent
                 ? (v) => Number(v).toFixed(2)
                 : (v) => Number(v).toLocaleString("zh-CN"),
             },
+            splitLine: { lineStyle: { color: "#e2e8f0" } },
+            axisLine: { show: true, lineStyle: { color: LEFT_AXIS_COLOR } },
           },
           // 右 Y 轴：根据 rightAxisPercent 决定是百分数 0~100% 还是 ROI 小数
           props.rightAxisPercent
@@ -141,27 +168,31 @@ function buildOption() {
                 max: 100,
                 position: "right",
                 axisLabel: {
-                  color: "#64748b",
+                  color: RIGHT_AXIS_COLOR,
+                  fontWeight: 500,
                   formatter: (v) => `${Number(v).toFixed(0)}%`,
                 },
                 splitLine: { show: false },
+                axisLine: { show: true, lineStyle: { color: RIGHT_AXIS_COLOR } },
               }
             : {
                 type: "value",
                 min: 0,
                 position: "right",
                 axisLabel: {
-                  color: "#64748b",
+                  color: RIGHT_AXIS_COLOR,
+                  fontWeight: 500,
                   formatter: (v) => Number(v).toFixed(2),
                 },
                 splitLine: { show: false },
+                axisLine: { show: true, lineStyle: { color: RIGHT_AXIS_COLOR } },
               },
         ]
       : {
           type: "value",
           min: 0,
           axisLabel: {
-            color: "#64748b",
+            color: LEFT_AXIS_COLOR,
             formatter: (v) => Number(v).toLocaleString("zh-CN"),
           },
         },
@@ -171,7 +202,7 @@ function buildOption() {
     animationEasing: "cubicOut",
     animationDurationUpdate: 600,
     animationEasingUpdate: "cubicOut",
-    series: props.series.map((s) => {
+    series: props.series.map((s, idx) => {
       const isLeft = LEFT_AXIS_NAMES.has(s.name);
       const isRight = RIGHT_AXIS_NAMES.has(s.name);
       // ROI 系列归属哪边：店铺总图 → 右；商品图 → 左
@@ -181,17 +212,25 @@ function buildOption() {
       if (isLeft) yAxisIndex = props.leftAxisRoi ? 0 : 1;
       else if (isRight) yAxisIndex = 1;
       const isRect = isLeft || isRight;
+      // 自定义调色板：按系列索引取色，循环使用
+      const color = COLOR_PALETTE[idx % COLOR_PALETTE.length];
+      // 线型区分：金额实线 + smooth；百分数 / ROI 系列用虚线 + 圆点（视觉上弱化，避免与主指标抢眼）
       return {
         name: s.name,
         type: "line",
-        smooth: true,
+        smooth: !isRect, // ROI/百分数不要平滑，避免斜率误读
         symbol: isRect ? "rect" : "circle",
         symbolSize: isRect ? 8 : 10,
         yAxisIndex,
-        itemStyle: { borderWidth: 2, borderColor: "#fff" },
+        itemStyle: { borderWidth: 2, borderColor: "#fff", color },
+        lineStyle: {
+          width: isRect ? 1.5 : 2.5,
+          type: isRight ? "dashed" : isLeft ? "dotted" : "solid",
+          color,
+        },
         data: s.data,
         z: 2,
-        animationDelay: (idx) => idx * 30,
+        animationDelay: (i) => i * 30,
       };
     }),
   };
