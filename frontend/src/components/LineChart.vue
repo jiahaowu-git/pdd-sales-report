@@ -55,21 +55,22 @@ const LEFT_AXIS_NAMES = new Set(["店铺ROI", "推广ROI"]);
 const RIGHT_AXIS_NAMES = new Set(["退款率", "仅退款率", "销售占比"]);
 
 // === 配色与线型（按 AGENTS.md §1 / §7：自定义调色板 + 双轴对比色 + 线型区分） ===
-// 三类语义：金额（冷蓝/青绿）、百分数（暖橙/玫红）、ROI（深紫/深蓝）
-// 同一类内的相邻系列走同一色相但不同明度，避免视觉混淆
+// 按"语义族"分配高区分度色相：金额/退款/净销售/ROI 四族之间色相尽量拉开
+// 同一族内的相邻系列走不同明度/饱和度避免混淆
 const COLOR_PALETTE = [
-  "#2563eb", // blue-600    金额主色
-  "#0891b2", // cyan-600    金额辅色
-  "#0d9488", // teal-600    净销售类
-  "#f59e0b", // amber-500   退款类
-  "#ef4444", // red-500     未发货退款
-  "#db2777", // pink-600    百分数
-  "#7c3aed", // violet-600  ROI 主
-  "#1d4ed8", // blue-700    ROI 辅
+  "#2563eb", // blue-600        店铺成交金额
+  "#7c3aed", // violet-600      推广交易额
+  "#0d9488", // teal-600        推广成交花费
+  "#f59e0b", // amber-500       总退款金额
+  "#dc2626", // red-600         未发货退款金额
+  "#db2777", // pink-600        店铺净销售
+  "#ea580c", // orange-600      推广净销售（与退款橙区分，暖色另一支）
+  "#581c87", // violet-900      店铺ROI（深紫，与金额蓝明显区分）
+  "#475569", // slate-600       推广ROI（深灰，避免与所有暖色撞）
 ];
 // 左 Y 轴文字/网格用深灰，右 Y 轴用对应主色，让"哪条线对应哪条轴"一眼可辨
 const LEFT_AXIS_COLOR = "#475569"; // slate-600
-const RIGHT_AXIS_COLOR = "#7c3aed"; // violet-600（与 ROI 系列同色系，右轴突出）
+const RIGHT_AXIS_COLOR = "#581c87"; // violet-900（与店铺ROI同色系，右轴突出）
 
 function buildOption() {
   // 是否启用双 Y 轴：
