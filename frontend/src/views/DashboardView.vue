@@ -112,17 +112,28 @@ function onPointClick({ date }) {
     <Card v-if="productCharts.length">
       <CardContent class="px-2 pt-6 space-y-[42px]">
         <div v-for="p in productCharts" :key="p.productId">
+          <!-- 标题区视觉升级：左侧 4px 主题色装饰条 + 商品ID胶囊 + 推广名称柔和灰 -->
           <div
-            class="flex items-center justify-between px-1 pb-2 text-base font-bold text-foreground"
+            class="relative flex items-center justify-between gap-2 rounded-md px-3 py-2 mb-2 transition-colors hover:bg-muted/40"
           >
-            <div>
-              <span class="font-normal text-muted-foreground">商品ID：</span>
-              <span>{{ p.productId }}</span>
-              <span v-if="p.promotionName" class="ml-3">
-                <span class="font-normal text-muted-foreground"
-                  >推广名称：</span
-                >
-                <span class="font-bold text-foreground">{{
+            <!-- 左侧装饰条 -->
+            <span
+              class="absolute left-0 top-2 bottom-2 w-1 rounded-full bg-primary"
+              aria-hidden="true"
+            ></span>
+            <div class="flex items-center gap-3 pl-2">
+              <span
+                class="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 font-mono text-[13px] font-semibold text-primary"
+              >
+                <span class="text-xs font-normal text-primary/70">商品ID</span>
+                <span>{{ p.productId }}</span>
+              </span>
+              <span
+                v-if="p.promotionName"
+                class="text-sm font-normal text-muted-foreground"
+              >
+                <span class="text-xs">推广名称：</span>
+                <span class="font-medium text-foreground">{{
                   p.promotionName
                 }}</span>
               </span>
