@@ -74,16 +74,19 @@ const isNumericCol = (col) => {
 };
 
 // 合计行：按列对数值求和
-// - SUM_COLS: 直接求和的列（列名与后端 server.js / config.js 一致：'成交花费' 是底表原名，'店铺净销售' 是派生名）
+// - SUM_COLS: 直接求和的列（列名与 xlsx 底表完全一致：'成交花费' / '店铺净销售额' / '推广净销售'）
 // - RATIO_COLS: 用合计值再相除得到的列（不参与行累加）
-// 别名提示：'推广成交花费' 与 '成交花费' 是同一指标；'店铺净销售额' 与 '店铺净销售' 是同一指标
+// 别名提示：
+//   - '推广成交花费' ≡ '成交花费'（同一指标的两种写法）
+//   - '店铺净销售额' ≡ '店铺净销售'（同一指标的两种写法）
+//   底表用前者（含'额'字），前端合计用底表原名
 const SUM_COLS = new Set([
   "店铺成交金额",
   "推广交易额",
   "成交花费",
   "总退款金额",
   "未发货退款金额",
-  "店铺净销售",
+  "店铺净销售额",
   "推广净销售",
 ]);
 const RATIO_COLS = new Set(["店铺ROI", "推广ROI"]);
@@ -99,12 +102,12 @@ const sumRow = computed(() => {
     result[col] = total;
   }
   // 合计 ROI：基于合计后的金额再相除（不是各行 ROI 的均值）
-  //   店铺ROI = 店铺净销售合计 / 成交花费合计
-  //   推广ROI = 推广净销售合计 / 成交花费合计
+  //   店铺ROI = 店铺净销售额合计 / 成交花费合计
+  //   推广ROI = 推广净销售合计  / 成交花费合计
   const tuiguangSpend = result["成交花费"];
   if (tuiguangSpend > 0) {
     result["店铺ROI"] = Number(
-      (result["店铺净销售"] / tuiguangSpend).toFixed(4),
+      (result["店铺净销售额"] / tuiguangSpend).toFixed(4),
     );
     result["推广ROI"] = Number(
       (result["推广净销售"] / tuiguangSpend).toFixed(4),
