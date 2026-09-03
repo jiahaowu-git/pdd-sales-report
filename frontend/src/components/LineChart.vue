@@ -251,7 +251,7 @@ function buildOption() {
       const isRect = isLeft || isRight;
       // 自定义调色板：按系列索引取色，循环使用
       const color = COLOR_PALETTE[idx % COLOR_PALETTE.length];
-      // 线型区分：金额实线 + smooth；百分数 / ROI 系列用虚线 + 圆点（视觉上弱化，避免与主指标抢眼）
+      // 线型规则：店铺ROI/推广ROI 用实线 + 2px（与主指标一致）；金额系列实线；百分数系列虚线 1.5px
       return {
         name: s.name,
         type: "line",
@@ -261,8 +261,8 @@ function buildOption() {
         yAxisIndex,
         itemStyle: { borderWidth: 2, borderColor: "#fff", color },
         lineStyle: {
-          width: isRect ? 1.5 : 2.5,
-          type: isRight ? "dashed" : isLeft ? "dotted" : "solid",
+          width: isRight ? 1.5 : 2,
+          type: isRight ? "dashed" : "solid",
           color,
         },
         data: s.data,
