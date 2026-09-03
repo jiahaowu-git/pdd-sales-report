@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount, shallowRef } from "vue";
+import { ref, watch, onMounted, onBeforeUnmount, shallowRef, computed } from "vue";
 import * as echarts from "echarts/core";
 import { BarChart, LineChart } from "echarts/charts";
 import {
@@ -37,6 +37,12 @@ const props = defineProps({
   // 商品图传 true（ROI 在左轴，百分数在右轴）
   leftAxisRoi: { type: Boolean, default: false },
 });
+
+// 是否处于首次渲染（series/dates 到位后的一帧内），用于显示骨架屏
+const ready = ref(false);
+const hasData = computed(
+  () => props.dates.length > 0 && props.series.length > 0,
+);
 
 const emit = defineEmits(["point-click"]);
 
@@ -260,7 +266,9 @@ function buildOption() {
         },
         data: s.data,
         z: 2,
-        animationDelay: (i) => i * 30,
+        // 逐条 + 逐点画出：线之间错开 120ms，点之间错开 8ms，整体更有'扫'的感觉
+        animationDelay: (i) => idx * 120 + i * 8,
+        animationDuration: 700,
       };
     }),
   };
@@ -270,6 +278,10 @@ function render() {
   if (!chartEl.value) return;
   if (!instance.value) instance.value = echarts.init(chartEl.value);
   instance.value.setOption(buildOption(), true);
+  // 渲染已启动，下一帧移除骨架屏（让 ECharts 的逐条动画接管视觉）
+  requestAnimationFrame(() => {
+    ready.value = true;
+  });
   // 点击某个数据点（任意系列上的点）都视为点击该日期
   instance.value.off("click");
   instance.value.on("click", (params) => {
@@ -300,5 +312,32 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div :style="{ width: '100%', height: props.height }" ref="chartEl" />
+  <div class="relative" :style="{ width: '100%', height: props.height }">
+    <!-- 无数据：居中空态 -->
+    <div
+      v-if="!hasData"
+      class="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground"
+    >
+      暂无数据
+    </div>
+    <!-- 加载骨架屏：首帧前显示，与 ECharts 动画接力，避免空白闪烁 -->
+    <div
+      v-else-if="!ready"
+      class="absolute inset-0 overflow-hidden rounded-md bg-muted/30"
+      aria-hidden="true"
+    >
+      <div
+        class="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/40 to-transparent"
+        style="background-size: 200% 100%; animation: shimmer 1.4s linear infinite;"
+      ></div>
+    </div>
+    <div ref="chartEl" class="h-full w-full" />
+  </div>
 </template>
+
+<style scoped>
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+</style>
