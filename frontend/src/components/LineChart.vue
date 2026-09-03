@@ -55,22 +55,22 @@ const LEFT_AXIS_NAMES = new Set(["店铺ROI", "推广ROI"]);
 const RIGHT_AXIS_NAMES = new Set(["退款率", "仅退款率", "销售占比"]);
 
 // === 配色与线型（按 AGENTS.md §1 / §7：自定义调色板 + 双轴对比色 + 线型区分） ===
-// 马卡龙色系（Pastel）：低饱和度+高明度，柔和不刺眼；9 个色相均匀分布，相邻色拉开色带
-// 色相轮分布：浅蓝 → 薰衣草紫 → 薄荷绿 → 鹅黄 → 珊瑚粉 → 樱花粉 → 蜜桃橙 → 雾霾蓝 → 雾灰
+// 9 个色相均匀分布，相邻色拉开色带；当前档位：Tailwind 500~600（中明度，对比清晰不刺眼）
+// 色相轮分布：蓝 → 紫 → 绿 → 黄 → 红 → 粉 → 橙 → 蓝紫 → 灰
 const COLOR_PALETTE = [
-  "#93C5FD", // sky-300      浅蓝        店铺成交金额
-  "#C4B5FD", // violet-300   薰衣草紫    推广交易额
-  "#6EE7B7", // emerald-300  薄荷绿      推广成交花费
-  "#FCD34D", // amber-300    鹅黄        总退款金额
-  "#FCA5A5", // red-300      珊瑚粉      未发货退款金额
-  "#F9A8D4", // pink-300     樱花粉      店铺净销售
-  "#FDBA74", // orange-300   蜜桃橙      推广净销售
-  "#818CF8", // indigo-400   雾霾蓝      店铺ROI（柔和的蓝紫）
-  "#94A3B8", // slate-400    雾灰蓝      推广ROI（中性的灰）
+  "#3B82F6", // blue-500       店铺成交金额
+  "#8B5CF6", // violet-500     推广交易额
+  "#10B981", // emerald-500    推广成交花费
+  "#EAB308", // yellow-500     总退款金额
+  "#EF4444", // red-500        未发货退款金额
+  "#EC4899", // pink-500       店铺净销售
+  "#F97316", // orange-500     推广净销售
+  "#6366F1", // indigo-500     店铺ROI
+  "#64748B", // slate-500      推广ROI
 ];
 // 左 Y 轴文字/网格用深灰，右 Y 轴用对应主色，让"哪条线对应哪条轴"一眼可辨
-const LEFT_AXIS_COLOR = "#64748b"; // slate-500（与马卡龙色搭配，文字仍清晰）
-const RIGHT_AXIS_COLOR = "#818CF8"; // indigo-400（与店铺ROI同色系，右轴柔和不抢眼）
+const LEFT_AXIS_COLOR = "#475569"; // slate-600
+const RIGHT_AXIS_COLOR = "#6366F1"; // indigo-500（与店铺ROI同色系，右轴柔和不抢眼）
 
 function buildOption() {
   // 是否启用双 Y 轴：
