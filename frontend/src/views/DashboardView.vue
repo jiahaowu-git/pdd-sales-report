@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SummaryCards from "@/components/SummaryCards.vue";
 import LineChart from "@/components/LineChart.vue";
@@ -13,7 +13,7 @@ const props = defineProps({
 
 const emit = defineEmits(["goto-detail"]);
 
-// 折线图展示的 7 个系列（顺序固定）
+// 折线图展示的 9 个系列（顺序固定；后两个 ROI 数值小，挂右侧 Y 轴）
 const CHART_SERIES = [
   "店铺成交金额",
   "推广交易额",
@@ -22,12 +22,13 @@ const CHART_SERIES = [
   "未发货退款金额",
   "店铺净销售",
   "推广净销售",
+  "店铺ROI",
+  "推广ROI",
 ];
 
 const chartSeries = computed(() => {
   if (!props.data?.chart?.series) return [];
   const all = props.data.chart.series;
-  const dates = props.data.chart.dates;
   return CHART_SERIES.map((name) => {
     const found = all.find((s) => s.name === name);
     // 后端别名处理：'推广成交花费' 在后端写入到 '成交花费'
@@ -62,9 +63,22 @@ const productCharts = computed(() => {
   const list = props.data?.chartByProduct || [];
   return list.map((item) => ({
     productId: item.productId,
+    promotionName: item.promotionName || "",
     series: (item.series || []).filter((s) => s.data && s.data.length),
   }));
 });
+
+// 每个商品图表的展开/折叠状态（默认全部展开）
+const expandedMap = ref({});
+function toggleProduct(productId) {
+  // 默认全部展开；首次点击该 productId 时，"折叠"操作；之后每次点击都取反。
+  // 之所以不用 !current：undefined 取反仍是 true，与默认展开相同，会导致首次点击无变化。
+  const current = expandedMap.value[productId];
+  expandedMap.value[productId] = current === undefined ? false : !current;
+}
+function isExpanded(productId) {
+  return expandedMap.value[productId] !== false; // 默认 true（展开）
+}
 
 // 折线图节点被点击时，把日期传给上层
 function onPointClick({ date }) {
@@ -86,6 +100,7 @@ function onPointClick({ date }) {
           :dates="chartDates"
           :series="chartSeries"
           height="520px"
+          :default-hidden-series="['推广ROI']"
           @point-click="onPointClick"
         />
         <div v-else class="py-10 text-center text-sm text-muted-foreground">
@@ -95,19 +110,72 @@ function onPointClick({ date }) {
     </Card>
 
     <Card v-if="productCharts.length">
-      <CardHeader class="pb-2">
-        <CardTitle class="text-base">{{ chartTitle }} - 各商品ID 维度</CardTitle>
-      </CardHeader>
-      <CardContent class="px-2 space-y-6">
+      <CardContent class="px-2 pt-6 space-y-[42px]">
         <div v-for="p in productCharts" :key="p.productId">
-          <div class="px-1 pb-2 text-sm font-medium text-muted-foreground">
-            商品ID：{{ p.productId }}
+          <div
+            class="flex items-center justify-between px-1 pb-2 text-base font-bold text-foreground"
+          >
+            <div>
+              <span class="font-normal text-muted-foreground">商品ID：</span>
+              <span>{{ p.productId }}</span>
+              <span v-if="p.promotionName" class="ml-3">
+                <span class="font-normal text-muted-foreground"
+                  >推广名称：</span
+                >
+                <span class="font-bold text-foreground">{{
+                  p.promotionName
+                }}</span>
+              </span>
+            </div>
+            <button
+              type="button"
+              class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              :title="isExpanded(p.productId) ? '折叠' : '展开'"
+              :aria-label="isExpanded(p.productId) ? '折叠' : '展开'"
+              :aria-expanded="isExpanded(p.productId)"
+              @click="toggleProduct(p.productId)"
+            >
+              <!-- 展开状态：向上箭头（点击此图标将折叠） -->
+              <svg
+                v-if="isExpanded(p.productId)"
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="m18 15-6-6-6 6" />
+              </svg>
+              <!-- 折叠状态：向下箭头（点击此图标将展开） -->
+              <svg
+                v-else
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
           </div>
           <LineChart
-            v-if="p.series.length"
+            v-if="p.series.length && isExpanded(p.productId)"
             :dates="chartDates"
             :series="p.series"
             height="360px"
+            :show-bg="true"
+            :right-axis-percent="true"
+            :left-axis-roi="true"
+            :default-hidden-series="['推广ROI']"
             @point-click="onPointClick"
           />
         </div>
