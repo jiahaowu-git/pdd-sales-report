@@ -75,7 +75,7 @@ const isNumericCol = (col) => {
 
 // 合计行：按列对数值求和
 // - SUM_COLS: 直接求和的列（列名与 xlsx 底表完全一致：'成交花费' / '店铺净销售额' / '推广净销售'）
-//   以及百分数列（'退货率' / '仅退款率' / '销售占比'），由 sumRow 用合计金额再相除后写入 result[col]，
+//   以及按用户授权补全的百分数列（'退货率' / '仅退款率'），由 sumRow 用合计金额再相除后写入 result[col]，
 //   因此也纳入 SUM_COLS 让合计行模板能命中显示分支
 // - RATIO_COLS: 用合计值再相除得到的列（不参与行累加）
 // 别名提示：
@@ -93,7 +93,6 @@ const SUM_COLS = new Set([
   // 百分数列：合计金额再相除（详见 sumRow 内注释），模板走合计行显示分支
   "退货率",
   "仅退款率",
-  "销售占比",
 ]);
 const RATIO_COLS = new Set(["店铺ROI", "推广ROI"]);
 
@@ -125,18 +124,13 @@ const sumRow = computed(() => {
   // 合计百分数：基于合计金额再相除（值仍是 0~1 小数，由 fmtPercent 统一 ×100 显示）
   //   退货率   = 总退款金额合计     / 推广交易额合计
   //   仅退款率 = 未发货退款金额合计 / 总退款金额合计
-  //   销售占比 = 店铺成交金额合计   / 推广交易额合计（按销量）
   const tuiguangTrade = result["推广交易额"];
   if (tuiguangTrade > 0) {
     result["退货率"] = Number(
       (result["总退款金额"] / tuiguangTrade).toFixed(4),
     );
-    result["销售占比"] = Number(
-      (result["店铺成交金额"] / tuiguangTrade).toFixed(4),
-    );
   } else {
     result["退货率"] = 0;
-    result["销售占比"] = 0;
   }
   if (result["总退款金额"] > 0) {
     result["仅退款率"] = Number(
