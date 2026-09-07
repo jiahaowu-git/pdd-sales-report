@@ -116,6 +116,29 @@ const sumRow = computed(() => {
     result["店铺ROI"] = 0;
     result["推广ROI"] = 0;
   }
+  // 合计百分数：基于合计金额再相除（值仍是 0~1 小数，由 fmtPercent 统一 ×100 显示）
+  //   退货率   = 总退款金额合计     / 推广交易额合计
+  //   仅退款率 = 未发货退款金额合计 / 总退款金额合计
+  //   销售占比 = 店铺成交金额合计   / 推广交易额合计（按销量）
+  const tuiguangTrade = result["推广交易额"];
+  if (tuiguangTrade > 0) {
+    result["退货率"] = Number(
+      (result["总退款金额"] / tuiguangTrade).toFixed(4),
+    );
+    result["销售占比"] = Number(
+      (result["店铺成交金额"] / tuiguangTrade).toFixed(4),
+    );
+  } else {
+    result["退货率"] = 0;
+    result["销售占比"] = 0;
+  }
+  if (result["总退款金额"] > 0) {
+    result["仅退款率"] = Number(
+      (result["未发货退款金额"] / result["总退款金额"]).toFixed(4),
+    );
+  } else {
+    result["仅退款率"] = 0;
+  }
   return result;
 });
 
