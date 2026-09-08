@@ -144,7 +144,8 @@ function buildOption() {
               const d = v - Number(prev);
               if (Math.abs(d) > 1e-9) {
                 const arrow = d > 0 ? "▲" : "▼";
-                const color = d > 0 ? "#16a34a" : "#dc2626"; // green-600 / red-600
+                // 业务约定：增长=红色，下降=绿色（与 A 股习惯一致）
+                const color = d > 0 ? "#dc2626" : "#16a34a"; // red-600 / green-600
                 const diffStr = isPct
                   ? `${Math.abs(d).toFixed(2)}%`
                   : Math.abs(d).toLocaleString("zh-CN", {
