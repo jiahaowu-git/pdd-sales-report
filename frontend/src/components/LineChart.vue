@@ -109,7 +109,9 @@ function buildOption() {
       borderColor: "#cbd5e1",
       borderWidth: 1,
       textStyle: { color: "#0f172a", fontSize: 12 },
-      extraCssText: "box-shadow: 0 4px 12px rgba(15,23,42,0.08); border-radius: 6px;",
+      // 给 flex 两端对齐留出足够宽度；最小宽度避免过窄排版难看
+      extraCssText:
+        "box-shadow: 0 4px 12px rgba(15,23,42,0.08); border-radius: 6px; min-width: 260px;",
       // tooltip 中百分数系列带 % 后缀；其它（金额/ROI）走默认
       // 同时显示与上一日 diff（绿色▲ / 红色▼），让用户一眼看出趋势
       formatter: (params) => {
@@ -130,7 +132,6 @@ function buildOption() {
           // diff：与上一日对比
           let diffText = "";
           if (prevIdx >= 0) {
-            const prevArr = p.seriesData?.map?.((x) => x) || [];
             // ECharts 把同 series 的所有点放在 series.data，我们从前一个 series 同 dataIndex 拿
             const seriesArr = props.series.find((s) => s.name === p.seriesName)
               ?.data;
@@ -151,13 +152,27 @@ function buildOption() {
                   : Math.abs(d).toLocaleString("zh-CN", {
                       maximumFractionDigits: 2,
                     });
-                diffText = ` <span style="color:${color};font-size:11px;">${arrow} ${diffStr}</span>`;
+                diffText = `<span style="color:${color};font-size:11px;">${arrow} ${diffStr}</span>`;
               }
             }
           }
-          return `${p.marker}${p.seriesName}: <b>${text}</b>${diffText}`;
+          // 每行 flex 两端对齐：左=图例+名称+数值，右=diff
+          // 用 !important 强制 line-height/margin，覆盖 Tailwind preflight 默认行高 1.5
+          return `<div style="display:flex !important;justify-content:space-between;align-items:center;gap:12px;line-height:1.2 !important;margin:0 !important;padding:0 !important;">`
+            + `<span style="line-height:1.2 !important;margin:0 !important;">${p.marker}${p.seriesName}: <b>${text}</b></span>`
+            + `<span style="white-space:nowrap;line-height:1.2 !important;margin:0 !important;">${diffText}</span>`
+            + `</div>`;
         });
-        return `${axisLabel}<br/>${lines.join("<br/>")}`;
+        // 把所有行装进一个容器，统一控制行间距（2px）+ 0 margin，避免 <br/> 被全局样式影响
+        return `<div style="line-height:1.2 !important;margin:0 !important;padding:0 !important;">`
+          + `<div style="line-height:1.2 !important;margin:0 0 4px 0 !important;padding:0 !important;">${axisLabel}</div>`
+          + lines
+            .map(
+              (row) =>
+                `<div style="line-height:1.2 !important;margin:2px 0 !important;padding:0 !important;">${row}</div>`,
+            )
+            .join("")
+          + `</div>`;
       },
     },
     grid: {
