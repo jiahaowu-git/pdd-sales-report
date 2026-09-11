@@ -51,6 +51,12 @@ const fmtId = (v) => {
   return String(v);
 };
 
+// 表头展示名映射：仅影响表头显示，不影响数据列名 / 业务逻辑 / 后端。
+// 例如底表里的 "退货率" 在前端表头展示成 "退款率"（业务上"总退款金额/推广交易额"概念更接近"退款率"）。
+const HEADER_DISPLAY = {
+  退货率: "退款率",
+};
+
 // 百分比类列（值是小数，显示成 X.XX%）
 const PERCENT_COLS = new Set(["退货率", "仅退款率", "销售占比"]);
 const isPercentCol = (col) => PERCENT_COLS.has(col);
@@ -193,7 +199,7 @@ onBeforeUnmount(() => {
                 ? 'truncate'
                 : '',
             ]"
-            :title="col"
+            :title="HEADER_DISPLAY[col] || col"
             :style="
               ci < FROZEN_COL_COUNT
                 ? {
@@ -218,7 +224,7 @@ onBeforeUnmount(() => {
                   }
             "
           >
-            {{ col }}
+            {{ HEADER_DISPLAY[col] || col }}
           </th>
         </tr>
       </thead>
